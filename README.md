@@ -27,46 +27,94 @@ Aplicativo web para formatação automática de trabalhos acadêmicos seguindo a
 - TypeScript
 - Vite
 
-## 🚀 Instalação
+## 🚀 Início Rápido
 
-### Backend
+### Método 1: Script Automático (Recomendado)
+
+```bash
+# Terminal 1 - Backend
+./start-backend.sh
+
+# Terminal 2 - Frontend
+cd frontend
+npm install && npm run dev
+```
+
+Acesse: **http://localhost:5173**
+
+### Método 2: Docker
+
+```bash
+docker-compose up -d
+```
+
+### Método 3: Manual
+
+Veja o guia completo: **[SETUP.md](SETUP.md)**
+
+## 📚 Documentação
+
+- **[QUICK_START.md](QUICK_START.md)** - Início rápido (5 minutos)
+- **[SETUP.md](SETUP.md)** - Configuração completa e detalhada
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Como contribuir
+- **API Docs** - http://localhost:8000/api/docs (após iniciar backend)
+
+## ⚠️ Solução de Problemas
+
+### ❌ Erro CORS (mais comum)
+
+Se você ver este erro no console do navegador:
+```
+Requisição cross-origin bloqueada: A diretiva Same Origin não permite a leitura...
+```
+
+**Solução:**
+
+1. Certifique-se que o arquivo `backend/.env` existe:
+```bash
+cd backend
+cp .env.example .env
+```
+
+2. Verifique que `DEBUG=True` no arquivo `.env`
+
+3. Reinicie o backend:
+```bash
+./start-backend.sh
+```
+
+### ❌ Erro "Module not found"
 
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Frontend
+### ❌ Porta em uso
 
 ```bash
-cd frontend
-npm install
+# Backend (porta 8000)
+lsof -ti:8000 | xargs kill -9
+
+# Frontend (porta 5173)
+lsof -ti:5173 | xargs kill -9
 ```
 
-## 🔧 Configuração
+## 🔧 Configuração de Pagamentos (Opcional)
 
-1. Copie o arquivo `.env.example` para `.env`
-2. Configure as variáveis de ambiente:
-   - `DATABASE_URL`: URL do banco de dados
-   - `MERCADOPAGO_ACCESS_TOKEN`: Token do Mercado Pago
-   - `SECRET_KEY`: Chave secreta para JWT
+O aplicativo funciona sem configurar pagamentos (para testes).
 
-## 💻 Execução
+Para habilitar pagamentos reais, edite `backend/.env`:
 
-### Backend
+```env
+# Mercado Pago
+MERCADOPAGO_ACCESS_TOKEN=seu-token-aqui
+MERCADOPAGO_PUBLIC_KEY=sua-chave-publica
 
-```bash
-cd backend
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm run dev
+# Stripe
+STRIPE_SECRET_KEY=sua-chave-secreta
+STRIPE_PUBLIC_KEY=sua-chave-publica
 ```
 
 ## 📐 Regras ABNT Implementadas
