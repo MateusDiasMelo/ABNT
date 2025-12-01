@@ -1,0 +1,193 @@
+"""
+Payment Service
+Gerencia pagamentos via Mercado Pago e Stripe.
+"""
+
+from typing import Dict, Optional
+import mercadopago
+import stripe
+from ..core.config import get_settings
+
+
+class PaymentService:
+    """Serviço de pagamento."""
+
+    def __init__(self):
+        self.settings = get_settings()
+
+    def create_mercadopago_payment(
+        self,
+        amount: float,
+        description: str,
+        file_id: str,
+        payer_email: Optional[str] = None
+    ) -> Dict:
+        """
+        Cria um pagamento via Mercado Pago.
+
+        Args:
+            amount: Valor em reais
+            description: Descrição do pagamento
+            file_id: ID do arquivo
+            payer_email: Email do pagador
+
+        Returns:
+            Dados do pagamento
+        """
+        if not self.settings.MERCADOPAGO_ACCESS_TOKEN:
+            raise ValueError("Mercado Pago não configurado")
+
+        sdk = mercadopago.SDK(self.settings.MERCADOPAGO_ACCESS_TOKEN)
+
+        payment_data = {
+            "transaction_amount": float(amount),
+            "description": description,
+            "payment_method_id": "pix",  # Pode ser pix, credit_card, etc
+            "external_reference": file_id,
+            "notification_url": f"https://seu-dominio.com/api/webhooks/mercadopago",
+        }
+
+        if payer_email:
+            payment_data["payer"] = {
+                "email": payer_email
+            }
+
+        try:
+            payment_response = sdk.payment().create(payment_data)
+            payment = payment_response["response"]
+
+            return {
+                "success": True,
+                "payment_id": payment.get("id"),
+                "status": payment.get("status"),
+                "qr_code": payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code"),
+                "qr_code_base64": payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code_base64"),
+                "ticket_url": payment.get("transaction_details", {}).get("external_resource_url"),
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def create_stripe_payment_intent(
+        self,
+        amount: float,
+        description: str,
+        file_id: str,
+        payer_email: Optional[str] = None
+    ) -> Dict:
+        """
+        Cria um Payment Intent no Stripe.
+
+        Args:
+            amount: Valor em reais
+            description: Descrição
+            file_id: ID do arquivo
+            payer_email: Email do pagador
+
+        Returns:
+            Dados do pagamento
+        """
+        if not self.settings.STRIPE_SECRET_KEY:
+            raise ValueError("Stripe não configurado")
+
+        stripe.api_key = self.settings.STRIPE_SECRET_KEY
+
+        try:
+            # Converte BRL para centavos
+            amount_cents = int(amount * 100)
+
+            payment_intent = stripe.PaymentIntent.create(
+                amount=amount_cents,
+                currency="brl",
+                description=description,
+                metadata={
+                    "file_id": file_id,
+                },
+                receipt_email=payer_email,
+            )
+
+            return {
+                "success": True,
+                "payment_id": payment_intent.id,
+                "client_secret": payment_intent.client_secret,
+                "status": payment_intent.status,
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def verify_mercadopago_payment(self, payment_id: str) -> Dict:
+        """
+        Verifica o status de um pagamento no Mercado Pago.
+
+        Args:
+            payment_id: ID do pagamento
+
+        Returns:
+            Status do pagamento
+        """
+        if not self.settings.MERCADOPAGO_ACCESS_TOKEN:
+            raise ValueError("Mercado Pago não configurado")
+
+        sdk = mercadopago.SDK(self.settings.MERCADOPAGO_ACCESS_TOKEN)
+
+        try:
+            payment_response = sdk.payment().get(payment_id)
+            payment = payment_response["response"]
+
+            return {
+                "success": True,
+                "status": payment.get("status"),
+                "status_detail": payment.get("status_detail"),
+                "approved": payment.get("status") == "approved",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def verify_stripe_payment(self, payment_intent_id: str) -> Dict:
+        """
+        Verifica o status de um Payment Intent no Stripe.
+
+        Args:
+            payment_intent_id: ID do Payment Intent
+
+        Returns:
+            Status do pagamento
+        """
+        if not self.settings.STRIPE_SECRET_KEY:
+            raise ValueError("Stripe não configurado")
+
+        stripe.api_key = self.settings.STRIPE_SECRET_KEY
+
+        try:
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+            return {
+                "success": True,
+                "status": payment_intent.status,
+                "approved": payment_intent.status == "succeeded",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    def calculate_price(self, page_count: int) -> float:
+        """
+        Calcula o preço baseado no número de páginas.
+
+        Args:
+            page_count: Número de páginas
+
+        Returns:
+            Preço total em reais
+        """
+        return round(page_count * self.settings.PRICE_PER_PAGE, 2)
