@@ -10,15 +10,15 @@ class Settings(BaseSettings):
     APP_NAME: str = "ABNT Formatador"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
-    SECRET_KEY: str
+    SECRET_KEY: str = "dev-secret-key-change-in-production"
 
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
-    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
 
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./abnt.db"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -35,8 +35,8 @@ class Settings(BaseSettings):
     # File Upload
     MAX_FILE_SIZE: int = 52428800  # 50MB
     ALLOWED_EXTENSIONS: str = "docx,pdf"
-    UPLOAD_DIR: str = "../uploads/temp"
-    PROCESSED_DIR: str = "../uploads/processed"
+    UPLOAD_DIR: str = "uploads/temp"
+    PROCESSED_DIR: str = "uploads/processed"
 
     # File Cleanup
     FILE_RETENTION_HOURS: int = 24
