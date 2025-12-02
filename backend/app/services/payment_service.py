@@ -42,15 +42,15 @@ class PaymentService:
         payment_data = {
             "transaction_amount": float(amount),
             "description": description,
-            "payment_method_id": "pix",  # Pode ser pix, credit_card, etc
+            "payment_method_id": "pix",
             "external_reference": file_id,
             "notification_url": f"https://seu-dominio.com/api/webhooks/mercadopago",
-        }
-
-        if payer_email:
-            payment_data["payer"] = {
-                "email": payer_email
+            "payer": {
+                "email": payer_email if payer_email else "cliente@abntformatador.com",
+                "first_name": "Cliente",
+                "last_name": "ABNT Formatador"
             }
+        }
 
         try:
             payment_response = sdk.payment().create(payment_data)
