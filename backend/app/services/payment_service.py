@@ -6,7 +6,11 @@ Gerencia pagamentos via Mercado Pago e Stripe.
 from typing import Dict, Optional
 import mercadopago
 import stripe
+import logging
 from ..core.config import get_settings
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 class PaymentService:
@@ -36,9 +40,17 @@ class PaymentService:
         """
         # Check if MercadoPago credentials are configured
         # Priority: Use real MercadoPago API if credentials are available
+        logger.info(f"🔍 Verificando credenciais do Mercado Pago...")
+        logger.info(f"   MERCADOPAGO_ACCESS_TOKEN configurado: {bool(self.settings.MERCADOPAGO_ACCESS_TOKEN)}")
+        logger.info(f"   PAYMENT_DEV_MODE: {self.settings.PAYMENT_DEV_MODE}")
+
         if not self.settings.MERCADOPAGO_ACCESS_TOKEN or self.settings.MERCADOPAGO_ACCESS_TOKEN == "":
+            logger.warning("⚠️  Credenciais do Mercado Pago NÃO configuradas")
             # Fallback to development mode only if no credentials are configured
             if self.settings.PAYMENT_DEV_MODE:
+                logger.warning("⚠️  MODO DE DESENVOLVIMENTO - Gerando QR Code FALSO")
+                logger.warning("   Este QR Code NÃO processa pagamentos reais!")
+
                 import uuid
                 import base64
                 import qrcode
@@ -79,6 +91,9 @@ class PaymentService:
 
         # Use real MercadoPago API
         # This is now the primary path when credentials are configured
+        logger.info("✅ Usando API REAL do Mercado Pago")
+        logger.info(f"   Valor: R$ {amount}")
+        logger.info(f"   Descrição: {description}")
 
         # Initialize SDK
         sdk = mercadopago.SDK(self.settings.MERCADOPAGO_ACCESS_TOKEN)
@@ -99,7 +114,10 @@ class PaymentService:
         try:
             # Create PIX payment using MercadoPago SDK
             # Documentation: https://www.mercadopago.com.br/developers/pt/docs/checkout-api/integration-configuration/integrate-with-pix
+            logger.info("🌐 Chamando API do Mercado Pago...")
             payment_response = sdk.payment().create(payment_data)
+
+            logger.info(f"📥 Resposta da API - Status HTTP: {payment_response.get('status')}")
 
             # Check if the request was successful (HTTP 201)
             if payment_response.get("status") != 201:
@@ -115,7 +133,24 @@ class PaymentService:
             # Ensure status is always a string
             payment_status = str(payment.get("status", "pending"))
 
+            # Log payment details
+            logger.info(f"✅ Pagamento criado com sucesso!")
+            logger.info(f"   Payment ID: {payment.get('id')}")
+            logger.info(f"   Status: {payment_status}")
+
             # Extract QR Code data from response
+            qr_code = payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code")
+            qr_code_base64 = payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code_base64")
+
+            logger.info(f"   QR Code (string): {'Presente' if qr_code else 'AUSENTE'}")
+            logger.info(f"   QR Code Base64: {'Presente' if qr_code_base64 else 'AUSENTE'}")
+
+            if qr_code_base64:
+                logger.info(f"   QR Code Base64 length: {len(qr_code_base64)}")
+            else:
+                logger.warning("⚠️  QR Code Base64 NÃO retornado pela API do Mercado Pago!")
+                logger.warning(f"   Resposta completa: {payment.get('point_of_interaction', {})}")
+
             # qr_code_base64: Base64-encoded PNG image of QR Code (ready to display)
             # qr_code: Raw PIX payment code string (for copy-paste)
             # Both fields are inside: response.point_of_interaction.transaction_data
@@ -123,11 +158,12 @@ class PaymentService:
                 "success": True,
                 "payment_id": str(payment.get("id")),
                 "status": payment_status,
-                "qr_code": payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code"),
-                "qr_code_base64": payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code_base64"),
+                "qr_code": qr_code,
+                "qr_code_base64": qr_code_base64,
                 "ticket_url": payment.get("transaction_details", {}).get("external_resource_url"),
             }
         except Exception as e:
+            logger.error(f"❌ Erro ao criar pagamento: {str(e)}")
             return {
                 "success": False,
                 "status": "error",
