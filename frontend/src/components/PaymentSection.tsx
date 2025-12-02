@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { QrCode } from 'lucide-react';
 
 interface PaymentSectionProps {
@@ -22,10 +22,8 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
   paymentData,
   loading
 }) => {
-  const [email, setEmail] = useState('');
-
   const handlePayment = () => {
-    onPaymentInitiate('mercadopago', email || undefined);
+    onPaymentInitiate('mercadopago');
   };
 
   return (
@@ -44,26 +42,6 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
 
       {!paymentData && (
         <>
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem' }}>
-              Email (opcional)
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid var(--border-color)',
-                borderRadius: '8px',
-                fontSize: '1rem'
-              }}
-            />
-          </div>
-
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
               Forma de Pagamento
