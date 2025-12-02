@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = ""
     STRIPE_PUBLIC_KEY: str = ""
 
+    # Google Sheets Database
+    GOOGLE_SHEETS_SPREADSHEET_ID: str = ""
+    GOOGLE_SHEETS_CREDENTIALS_FILE: str = "google_credentials.json"
+
     # Pricing
     PRICE_PER_PAGE: float = 0.80
 
