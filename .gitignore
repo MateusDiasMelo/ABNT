@@ -78,3 +78,5 @@ coverage/
 # Build
 build/
 dist/
+
+backend/google_credentials.json
