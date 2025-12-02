@@ -34,47 +34,51 @@ class PaymentService:
         Returns:
             Dados do pagamento
         """
-        # Development mode: simulate PIX payment without real credentials
-        if self.settings.PAYMENT_DEV_MODE:
-            import uuid
-            import base64
-            import qrcode
-            import io
+        # Check if MercadoPago credentials are configured
+        # Priority: Use real MercadoPago API if credentials are available
+        if not self.settings.MERCADOPAGO_ACCESS_TOKEN or self.settings.MERCADOPAGO_ACCESS_TOKEN == "":
+            # Fallback to development mode only if no credentials are configured
+            if self.settings.PAYMENT_DEV_MODE:
+                import uuid
+                import base64
+                import qrcode
+                import io
 
-            # Generate a fake PIX code for development
-            fake_qr_data = f"00020126360014BR.GOV.BCB.PIX0114+55119999999990204000053039865802BR5925ABNT Formatador LTDA6009SAO PAULO62070503***6304{uuid.uuid4().hex[:4].upper()}"
+                # Generate a fake PIX code for development
+                fake_qr_data = f"00020126360014BR.GOV.BCB.PIX0114+55119999999990204000053039865802BR5925ABNT Formatador LTDA6009SAO PAULO62070503***6304{uuid.uuid4().hex[:4].upper()}"
 
-            # Create a real QR code that can be scanned
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
-            qr.add_data(fake_qr_data)
-            qr.make(fit=True)
+                # Create a real QR code that can be scanned
+                qr = qrcode.QRCode(
+                    version=1,
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=10,
+                    border=4,
+                )
+                qr.add_data(fake_qr_data)
+                qr.make(fit=True)
 
-            # Generate QR code image
-            img = qr.make_image(fill_color="black", back_color="white")
+                # Generate QR code image
+                img = qr.make_image(fill_color="black", back_color="white")
 
-            # Convert to base64
-            buffer = io.BytesIO()
-            img.save(buffer, format='PNG')
-            buffer.seek(0)
-            fake_qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+                # Convert to base64
+                buffer = io.BytesIO()
+                img.save(buffer, format='PNG')
+                buffer.seek(0)
+                fake_qr_base64 = base64.b64encode(buffer.getvalue()).decode()
 
-            return {
-                "success": True,
-                "payment_id": f"dev_{uuid.uuid4().hex}",
-                "status": "pending",
-                "qr_code": fake_qr_data,
-                "qr_code_base64": fake_qr_base64,
-                "ticket_url": None,
-            }
+                return {
+                    "success": True,
+                    "payment_id": f"dev_{uuid.uuid4().hex}",
+                    "status": "pending",
+                    "qr_code": fake_qr_data,
+                    "qr_code_base64": fake_qr_base64,
+                    "ticket_url": None,
+                }
+            else:
+                raise ValueError("Mercado Pago não configurado e modo de desenvolvimento desabilitado")
 
-        # Production mode: use real MercadoPago API
-        if not self.settings.MERCADOPAGO_ACCESS_TOKEN:
-            raise ValueError("Mercado Pago não configurado")
+        # Use real MercadoPago API
+        # This is now the primary path when credentials are configured
 
         # Initialize SDK
         sdk = mercadopago.SDK(self.settings.MERCADOPAGO_ACCESS_TOKEN)
@@ -93,9 +97,11 @@ class PaymentService:
         }
 
         try:
+            # Create PIX payment using MercadoPago SDK
+            # Documentation: https://www.mercadopago.com.br/developers/pt/docs/checkout-api/integration-configuration/integrate-with-pix
             payment_response = sdk.payment().create(payment_data)
 
-            # Check if the request was successful
+            # Check if the request was successful (HTTP 201)
             if payment_response.get("status") != 201:
                 error_message = payment_response.get("response", {}).get("message", "Erro desconhecido do Mercado Pago")
                 return {
@@ -109,6 +115,10 @@ class PaymentService:
             # Ensure status is always a string
             payment_status = str(payment.get("status", "pending"))
 
+            # Extract QR Code data from response
+            # qr_code_base64: Base64-encoded PNG image of QR Code (ready to display)
+            # qr_code: Raw PIX payment code string (for copy-paste)
+            # Both fields are inside: response.point_of_interaction.transaction_data
             return {
                 "success": True,
                 "payment_id": str(payment.get("id")),

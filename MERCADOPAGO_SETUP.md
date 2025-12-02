@@ -2,14 +2,45 @@
 
 Este guia explica como o MercadoPago está configurado no projeto ABNT Formatador.
 
+## 🎯 Modos de Operação
+
+O sistema suporta dois modos de operação:
+
+### 1. **API Real do MercadoPago (PRIORIDADE)**
+
+Quando as credenciais do MercadoPago estão configuradas, o sistema **SEMPRE** usa a API real, gerando QR Codes PIX válidos e processando pagamentos reais.
+
+```env
+MERCADOPAGO_ACCESS_TOKEN=APP_USR-seu-token-aqui
+MERCADOPAGO_PUBLIC_KEY=APP_USR-sua-chave-aqui
+MERCADOPAGO_TEST_MODE=True  # True para teste, False para produção
+```
+
+✅ **QR Code gerado:** PNG real escaneável retornado pela API do MercadoPago
+✅ **Formato:** Base64-encoded PNG image
+✅ **Documentação:** https://www.mercadopago.com.br/developers/pt/docs/checkout-api/integration-configuration/integrate-with-pix
+
+### 2. **Modo de Desenvolvimento (FALLBACK)**
+
+Quando as credenciais **NÃO** estão configuradas e `PAYMENT_DEV_MODE=True`, o sistema gera um QR Code falso apenas para testes de interface.
+
+```env
+MERCADOPAGO_ACCESS_TOKEN=  # Vazio ou não configurado
+PAYMENT_DEV_MODE=True      # Permite fallback para modo dev
+```
+
+⚠️ **QR Code gerado:** PNG escaneável mas com dados PIX falsos (não processa pagamento real)
+⚠️ **Uso:** Apenas para desenvolvimento local sem credenciais
+
 ## 🔑 Credenciais Configuradas
 
-As credenciais do MercadoPago já estão configuradas no arquivo `.env`:
+As credenciais do MercadoPago devem estar configuradas no arquivo `.env`:
 
 ```env
 # Payment Gateways - MercadoPago
 MERCADOPAGO_ACCESS_TOKEN=APP_USR-4460565164748962-120120-5a2b81206d26ecaed52dcbbcc7a7e6b8-3033159487
 MERCADOPAGO_PUBLIC_KEY=APP_USR-f34a7fe8-92f7-4a15-87ed-603951820dd6
+MERCADOPAGO_TEST_MODE=True
 ```
 
 ## 📦 Dependências
