@@ -38,14 +38,22 @@ class PaymentService:
         if self.settings.PAYMENT_DEV_MODE:
             import uuid
             import base64
-            from io import BytesIO
 
             # Generate a fake QR code for development
             fake_qr_data = f"00020126360014BR.GOV.BCB.PIX0114+55119999999990204000053039865802BR5925ABNT Formatador LTDA6009SAO PAULO62070503***6304{uuid.uuid4().hex[:4].upper()}"
 
-            # Create a simple fake QR code image (just a placeholder)
-            # In production, this would be a real QR code from MercadoPago
-            fake_qr_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+            # Create a fake QR code SVG image for development
+            qr_svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+                <rect width="200" height="200" fill="white"/>
+                <text x="100" y="100" text-anchor="middle" font-size="14" fill="black">QR CODE DEV</text>
+                <rect x="20" y="20" width="40" height="40" fill="black"/>
+                <rect x="140" y="20" width="40" height="40" fill="black"/>
+                <rect x="20" y="140" width="40" height="40" fill="black"/>
+                <rect x="80" y="80" width="40" height="40" fill="black"/>
+            </svg>"""
+
+            # Convert SVG to base64
+            fake_qr_base64 = base64.b64encode(qr_svg.encode()).decode()
 
             return {
                 "success": True,
@@ -168,14 +176,15 @@ class PaymentService:
         Returns:
             Status do pagamento
         """
-        # Development mode: auto-approve payments
+        # Development mode: keep payments pending to allow QR code display
+        # In dev mode, payments remain pending indefinitely for testing
         if self.settings.PAYMENT_DEV_MODE:
             if payment_id.startswith("dev_"):
                 return {
                     "success": True,
-                    "status": "approved",
-                    "status_detail": "accredited",
-                    "approved": True,
+                    "status": "pending",
+                    "status_detail": "pending_waiting_payment",
+                    "approved": False,
                 }
 
         # Production mode: check real payment status
