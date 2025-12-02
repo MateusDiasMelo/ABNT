@@ -95,12 +95,18 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
         <div className="qr-code-container">
           <h3>Escaneie o QR Code para pagar com PIX</h3>
           <img
-            src={`data:image/png;base64,${paymentData.qr_code_base64}`}
+            src={`data:image/svg+xml;base64,${paymentData.qr_code_base64}`}
             alt="QR Code PIX"
+            style={{ maxWidth: '300px', margin: '1rem auto', display: 'block' }}
           />
           <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
             Após o pagamento, o download será liberado automaticamente
           </p>
+          {paymentData.status === 'pending' && (
+            <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
+              Aguardando confirmação do pagamento...
+            </p>
+          )}
         </div>
       )}
     </div>
