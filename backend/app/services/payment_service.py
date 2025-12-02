@@ -37,15 +37,8 @@ class PaymentService:
         if not self.settings.MERCADOPAGO_ACCESS_TOKEN:
             raise ValueError("Mercado Pago não configurado")
 
-        # Initialize SDK with test mode configuration
+        # Initialize SDK
         sdk = mercadopago.SDK(self.settings.MERCADOPAGO_ACCESS_TOKEN)
-
-        # Configure request options for test mode if enabled
-        request_options = mercadopago.config.RequestOptions()
-        if self.settings.MERCADOPAGO_TEST_MODE:
-            request_options.custom_headers = {
-                "x-test-scope": "sandbox"
-            }
 
         payment_data = {
             "transaction_amount": float(amount),
@@ -61,11 +54,7 @@ class PaymentService:
         }
 
         try:
-            # Create payment with request options
-            if self.settings.MERCADOPAGO_TEST_MODE:
-                payment_response = sdk.payment().create(payment_data, request_options)
-            else:
-                payment_response = sdk.payment().create(payment_data)
+            payment_response = sdk.payment().create(payment_data)
 
             # Check if the request was successful
             if payment_response.get("status") != 201:
