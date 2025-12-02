@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
-import { CreditCard, QrCode } from 'lucide-react';
+import { QrCode } from 'lucide-react';
 
 interface PaymentSectionProps {
   price: number;
   pages: number;
-  onPaymentInitiate: (gateway: 'mercadopago' | 'stripe', email?: string) => void;
+  onPaymentInitiate: (gateway: 'mercadopago', email?: string) => void;
   paymentData?: {
     qr_code_base64?: string;
     ticket_url?: string;
-    client_secret?: string;
   };
   loading?: boolean;
 }
@@ -21,10 +20,9 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
   loading
 }) => {
   const [email, setEmail] = useState('');
-  const [selectedGateway, setSelectedGateway] = useState<'mercadopago' | 'stripe'>('mercadopago');
 
   const handlePayment = () => {
-    onPaymentInitiate(selectedGateway, email || undefined);
+    onPaymentInitiate('mercadopago', email || undefined);
   };
 
   return (
@@ -67,29 +65,18 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
               Forma de Pagamento
             </label>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button
-                className={`button ${selectedGateway === 'mercadopago' ? 'button-primary' : ''}`}
-                onClick={() => setSelectedGateway('mercadopago')}
-                style={{
-                  flex: 1,
-                  background: selectedGateway === 'mercadopago' ? undefined : '#e2e8f0'
-                }}
-              >
-                <QrCode size={20} />
-                PIX / Mercado Pago
-              </button>
-              <button
-                className={`button ${selectedGateway === 'stripe' ? 'button-primary' : ''}`}
-                onClick={() => setSelectedGateway('stripe')}
-                style={{
-                  flex: 1,
-                  background: selectedGateway === 'stripe' ? undefined : '#e2e8f0'
-                }}
-              >
-                <CreditCard size={20} />
-                Cartão / Stripe
-              </button>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem',
+              background: 'var(--primary-color)',
+              color: 'white',
+              borderRadius: '8px',
+              fontWeight: '500'
+            }}>
+              <QrCode size={20} />
+              PIX / Mercado Pago
             </div>
           </div>
 
@@ -114,14 +101,6 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
           <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
             Após o pagamento, o download será liberado automaticamente
           </p>
-        </div>
-      )}
-
-      {paymentData?.client_secret && (
-        <div className="info-box">
-          <h4>Pagamento via Stripe</h4>
-          <p>Complete o pagamento para liberar o download</p>
-          {/* Aqui seria integrado o Stripe Elements */}
         </div>
       )}
     </div>

@@ -54,12 +54,25 @@ class PaymentService:
 
         try:
             payment_response = sdk.payment().create(payment_data)
+
+            # Check if the request was successful
+            if payment_response.get("status") != 201:
+                error_message = payment_response.get("response", {}).get("message", "Erro desconhecido do Mercado Pago")
+                return {
+                    "success": False,
+                    "status": "error",
+                    "error": f"Mercado Pago retornou erro: {error_message}"
+                }
+
             payment = payment_response["response"]
+
+            # Ensure status is always a string
+            payment_status = str(payment.get("status", "pending"))
 
             return {
                 "success": True,
-                "payment_id": payment.get("id"),
-                "status": payment.get("status"),
+                "payment_id": str(payment.get("id")),
+                "status": payment_status,
                 "qr_code": payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code"),
                 "qr_code_base64": payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code_base64"),
                 "ticket_url": payment.get("transaction_details", {}).get("external_resource_url"),
@@ -67,6 +80,7 @@ class PaymentService:
         except Exception as e:
             return {
                 "success": False,
+                "status": "error",
                 "error": str(e)
             }
 

@@ -70,7 +70,7 @@ function App() {
     }
   };
 
-  const handlePaymentInitiate = async (gateway: 'mercadopago' | 'stripe', email?: string) => {
+  const handlePaymentInitiate = async (gateway: 'mercadopago', email?: string) => {
     if (!state.documentData) return;
 
     setState(prev => ({ ...prev, loading: true, error: null }));
@@ -103,7 +103,7 @@ function App() {
     }
   };
 
-  const startPaymentVerification = (fileId: string, paymentId: string, gateway: 'mercadopago' | 'stripe') => {
+  const startPaymentVerification = (fileId: string, paymentId: string, gateway: 'mercadopago') => {
     const interval = setInterval(async () => {
       try {
         const result = await verifyPayment(fileId, paymentId, gateway);
