@@ -100,6 +100,14 @@ def create_complete_academic_document():
                 "onde_se_le": "obedece",
                 "leia_se": "obedecem"
             }
+        ],
+
+        # Folha de aprovação (geralmente preenchida após a defesa)
+        approval_date="15/12/2024",
+        committee_members=[
+            "Prof. Dr. José da Silva - UNIFESP",
+            "Profa. Dra. Maria Santos - USP",
+            "Prof. Dr. Pedro Oliveira - UNICAMP"
         ]
     )
 
@@ -191,6 +199,7 @@ def create_complete_academic_document():
     print(f"   ✓ Capa")
     print(f"   ✓ Folha de rosto")
     print(f"   ✓ Errata")
+    print(f"   ✓ Folha de aprovação")
     print(f"   ✓ Dedicatória")
     print(f"   ✓ Agradecimentos")
     print(f"   ✓ Epígrafe")

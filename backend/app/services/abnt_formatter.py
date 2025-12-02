@@ -56,6 +56,11 @@ class DocumentMetadata:
     errata_items: Optional[List[Dict[str, str]]] = field(default_factory=list)
     # Formato: [{"folha": "32", "linha": "3", "onde_se_le": "estrágico", "leia_se": "estratégico"}]
 
+    # Folha de aprovação
+    approval_date: Optional[str] = None  # Data da aprovação (ex: "15/12/2024")
+    committee_members: Optional[List[str]] = field(default_factory=list)
+    # Formato: ["Prof. Dr. Nome Completo", "Profa. Dra. Nome Completo", ...]
+
     def get_complete_title(self) -> str:
         """Retorna título completo com subtítulo."""
         if self.subtitle:
@@ -403,8 +408,8 @@ class ABNTFormatter:
         if self.metadata.errata_items:
             self._create_errata_page()
 
-        # Folha de aprovação (geralmente adicionada após a defesa)
-        # self._create_approval_page()
+        # Folha de aprovação
+        self._create_approval_page()
 
         if self.metadata.dedication:
             self._create_dedication_page()
@@ -652,6 +657,108 @@ class ABNTFormatter:
 
             for cell in row:
                 cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Quebra de página
+        self.doc.add_page_break()
+
+    def _create_approval_page(self):
+        """
+        Cria a folha de aprovação (elemento obrigatório) seguindo NBR 14724.
+
+        A folha de aprovação deve conter:
+        - Nome do autor
+        - Título e subtítulo
+        - Natureza do trabalho
+        - Data de aprovação
+        - Nome, titulação e assinatura dos membros da banca examinadora
+        """
+        # Nome do autor
+        p = self.doc.add_paragraph()
+        p.text = self.metadata.author.upper()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Cm(5)
+        for run in p.runs:
+            run.font.name = self.FONTE_PRINCIPAL
+            run.font.size = self.TAMANHO_FONTE_NORMAL
+            run.font.bold = True
+
+        # Título
+        p = self.doc.add_paragraph()
+        p.text = self.metadata.title.upper()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Cm(3)
+        for run in p.runs:
+            run.font.name = self.FONTE_PRINCIPAL
+            run.font.size = self.TAMANHO_FONTE_NORMAL
+            run.font.bold = True
+
+        # Subtítulo (se houver)
+        if self.metadata.subtitle:
+            p = self.doc.add_paragraph()
+            p.text = self.metadata.subtitle
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in p.runs:
+                run.font.name = self.FONTE_PRINCIPAL
+                run.font.size = self.TAMANHO_FONTE_NORMAL
+
+        # Natureza do trabalho (recuado à direita)
+        p = self.doc.add_paragraph()
+        natureza_text = f"{self.metadata.degree_type} para obtenção do título de graduação em {self.metadata.field_of_study}"
+        if self.metadata.department:
+            natureza_text += f" apresentado à {self.metadata.institution} – {self.metadata.department}."
+        else:
+            natureza_text += f" apresentado à {self.metadata.institution}."
+
+        p.text = natureza_text
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        p.paragraph_format.space_before = Cm(3)
+        p.paragraph_format.left_indent = Cm(8)
+        for run in p.runs:
+            run.font.name = self.FONTE_PRINCIPAL
+            run.font.size = self.TAMANHO_FONTE_PEQUENA
+
+        # Data de aprovação
+        p = self.doc.add_paragraph()
+        approval_text = "Aprovado em:"
+        if self.metadata.approval_date:
+            approval_text = f"Aprovado em: {self.metadata.approval_date}"
+        p.text = approval_text
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        p.paragraph_format.space_before = Cm(3)
+        for run in p.runs:
+            run.font.name = self.FONTE_PRINCIPAL
+            run.font.size = self.TAMANHO_FONTE_NORMAL
+
+        # Membros da banca examinadora
+        # Se não houver membros definidos, cria 3 linhas em branco para assinaturas
+        num_members = len(self.metadata.committee_members) if self.metadata.committee_members else 3
+
+        for i in range(num_members):
+            # Espaço antes da linha de assinatura
+            p = self.doc.add_paragraph()
+            p.paragraph_format.space_before = Cm(2)
+
+            # Linha de assinatura
+            p = self.doc.add_paragraph()
+            p.text = "_" * 70 + "  " + "_" * 15
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            for run in p.runs:
+                run.font.name = self.FONTE_PRINCIPAL
+                run.font.size = self.TAMANHO_FONTE_PEQUENA
+
+            # Nome do membro (se fornecido) ou texto genérico
+            p = self.doc.add_paragraph()
+            if self.metadata.committee_members and i < len(self.metadata.committee_members):
+                member_text = f"{self.metadata.committee_members[i]}"
+            else:
+                member_text = "(título e nome de elemento que compõe a banca examinadora)"
+
+            member_text += "     (data)"
+            p.text = member_text
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            for run in p.runs:
+                run.font.name = self.FONTE_PRINCIPAL
+                run.font.size = self.TAMANHO_FONTE_PEQUENA
 
         # Quebra de página
         self.doc.add_page_break()

@@ -102,6 +102,10 @@ class DocumentMetadataRequest(BaseModel):
     # Errata
     errata_items: Optional[List[dict]] = None
 
+    # Folha de aprovação
+    approval_date: Optional[str] = None
+    committee_members: Optional[List[str]] = None
+
 
 class ProcessingRequest(BaseModel):
     """Requisição de processamento com metadados opcionais."""
