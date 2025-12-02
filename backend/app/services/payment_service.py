@@ -34,6 +34,29 @@ class PaymentService:
         Returns:
             Dados do pagamento
         """
+        # Development mode: simulate PIX payment without real credentials
+        if self.settings.PAYMENT_DEV_MODE:
+            import uuid
+            import base64
+            from io import BytesIO
+
+            # Generate a fake QR code for development
+            fake_qr_data = f"00020126360014BR.GOV.BCB.PIX0114+55119999999990204000053039865802BR5925ABNT Formatador LTDA6009SAO PAULO62070503***6304{uuid.uuid4().hex[:4].upper()}"
+
+            # Create a simple fake QR code image (just a placeholder)
+            # In production, this would be a real QR code from MercadoPago
+            fake_qr_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+            return {
+                "success": True,
+                "payment_id": f"dev_{uuid.uuid4().hex}",
+                "status": "pending",
+                "qr_code": fake_qr_data,
+                "qr_code_base64": fake_qr_base64,
+                "ticket_url": None,
+            }
+
+        # Production mode: use real MercadoPago API
         if not self.settings.MERCADOPAGO_ACCESS_TOKEN:
             raise ValueError("Mercado Pago não configurado")
 
@@ -136,6 +159,27 @@ class PaymentService:
             }
 
     def verify_mercadopago_payment(self, payment_id: str) -> Dict:
+        """
+        Verifica o status de um pagamento no Mercado Pago.
+
+        Args:
+            payment_id: ID do pagamento
+
+        Returns:
+            Status do pagamento
+        """
+        # Development mode: auto-approve payments after a delay
+        if self.settings.PAYMENT_DEV_MODE:
+            # In dev mode, simulate payment approval
+            if payment_id.startswith("dev_"):
+                return {
+                    "success": True,
+                    "status": "approved",
+                    "status_detail": "accredited",
+                    "approved": True,
+                }
+
+        # Production mode: check real payment status
         """
         Verifica o status de um pagamento no Mercado Pago.
 
