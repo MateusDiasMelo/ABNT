@@ -38,22 +38,30 @@ class PaymentService:
         if self.settings.PAYMENT_DEV_MODE:
             import uuid
             import base64
+            import qrcode
+            import io
 
-            # Generate a fake QR code for development
+            # Generate a fake PIX code for development
             fake_qr_data = f"00020126360014BR.GOV.BCB.PIX0114+55119999999990204000053039865802BR5925ABNT Formatador LTDA6009SAO PAULO62070503***6304{uuid.uuid4().hex[:4].upper()}"
 
-            # Create a fake QR code SVG image for development
-            qr_svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-                <rect width="200" height="200" fill="white"/>
-                <text x="100" y="100" text-anchor="middle" font-size="14" fill="black">QR CODE DEV</text>
-                <rect x="20" y="20" width="40" height="40" fill="black"/>
-                <rect x="140" y="20" width="40" height="40" fill="black"/>
-                <rect x="20" y="140" width="40" height="40" fill="black"/>
-                <rect x="80" y="80" width="40" height="40" fill="black"/>
-            </svg>"""
+            # Create a real QR code that can be scanned
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(fake_qr_data)
+            qr.make(fit=True)
 
-            # Convert SVG to base64
-            fake_qr_base64 = base64.b64encode(qr_svg.encode()).decode()
+            # Generate QR code image
+            img = qr.make_image(fill_color="black", back_color="white")
+
+            # Convert to base64
+            buffer = io.BytesIO()
+            img.save(buffer, format='PNG')
+            buffer.seek(0)
+            fake_qr_base64 = base64.b64encode(buffer.getvalue()).decode()
 
             return {
                 "success": True,
