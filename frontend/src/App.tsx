@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { FileText, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import './styles/App.css';
 
