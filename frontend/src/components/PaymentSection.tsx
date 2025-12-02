@@ -5,9 +5,11 @@ interface PaymentSectionProps {
   price: number;
   pages: number;
   onPaymentInitiate: (gateway: 'mercadopago', email?: string) => void;
+  onGenerateNewQRCode?: () => void;
   paymentData?: {
     qr_code_base64?: string;
     ticket_url?: string;
+    status?: string;
   };
   loading?: boolean;
 }
@@ -16,6 +18,7 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
   price,
   pages,
   onPaymentInitiate,
+  onGenerateNewQRCode,
   paymentData,
   loading
 }) => {
@@ -106,6 +109,22 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
             <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
               Aguardando confirmação do pagamento...
             </p>
+          )}
+
+          {onGenerateNewQRCode && (
+            <button
+              className="button"
+              onClick={onGenerateNewQRCode}
+              disabled={loading}
+              style={{
+                width: '100%',
+                marginTop: '1rem',
+                background: 'var(--border-color)',
+                color: 'var(--text-color)'
+              }}
+            >
+              {loading ? 'Gerando...' : '🔄 Gerar Novo QR Code'}
+            </button>
           )}
         </div>
       )}
