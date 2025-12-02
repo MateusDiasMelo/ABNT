@@ -106,6 +106,14 @@ class DocumentMetadataRequest(BaseModel):
     approval_date: Optional[str] = None
     committee_members: Optional[List[str]] = None
 
+    # Listas opcionais
+    include_list_of_figures: Optional[bool] = False
+    include_list_of_tables: Optional[bool] = False
+    include_list_of_abbreviations: Optional[bool] = False
+    abbreviations: Optional[List[dict]] = None
+    include_list_of_symbols: Optional[bool] = False
+    symbols: Optional[List[dict]] = None
+
 
 class ProcessingRequest(BaseModel):
     """Requisição de processamento com metadados opcionais."""

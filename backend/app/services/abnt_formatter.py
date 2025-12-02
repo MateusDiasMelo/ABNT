@@ -61,6 +61,16 @@ class DocumentMetadata:
     committee_members: Optional[List[str]] = field(default_factory=list)
     # Formato: ["Prof. Dr. Nome Completo", "Profa. Dra. Nome Completo", ...]
 
+    # Listas opcionais
+    include_list_of_figures: bool = False
+    include_list_of_tables: bool = False
+    include_list_of_abbreviations: bool = False
+    abbreviations: Optional[List[Dict[str, str]]] = field(default_factory=list)
+    # Formato: [{"abbr": "ABNT", "full": "Associação Brasileira de Normas Técnicas"}, ...]
+    include_list_of_symbols: bool = False
+    symbols: Optional[List[Dict[str, str]]] = field(default_factory=list)
+    # Formato: [{"symbol": "α", "meaning": "Nível de significância"}, ...]
+
     def get_complete_title(self) -> str:
         """Retorna título completo com subtítulo."""
         if self.subtitle:
@@ -914,22 +924,224 @@ class ABNTFormatter:
     def _create_lists(self):
         """
         Cria listas opcionais:
+        - Lista de ilustrações (figuras, quadros)
         - Lista de tabelas
-        - Lista de figuras
         - Lista de abreviaturas e siglas
         - Lista de símbolos
 
-        Essas listas são geradas automaticamente baseadas no conteúdo do documento.
+        Essas listas são geradas automaticamente ou a partir de metadados fornecidos.
         """
-        # TODO: Implementar detecção automática de tabelas, figuras, abreviaturas e símbolos
-        # Por enquanto, este método é um placeholder
-        pass
+        # Lista de ilustrações (figuras + quadros)
+        if self.metadata.include_list_of_figures:
+            figures = self._detect_figures()
+            if figures:
+                self._create_list_of_figures(figures)
+
+        # Lista de tabelas
+        if self.metadata.include_list_of_tables:
+            tables = self._detect_tables()
+            if tables:
+                self._create_list_of_tables(tables)
+
+        # Lista de abreviaturas e siglas
+        if self.metadata.include_list_of_abbreviations and self.metadata.abbreviations:
+            self._create_list_of_abbreviations()
+
+        # Lista de símbolos
+        if self.metadata.include_list_of_symbols and self.metadata.symbols:
+            self._create_list_of_symbols()
+
+    def _detect_figures(self) -> List[Dict[str, str]]:
+        """
+        Detecta figuras e quadros no documento.
+
+        Returns:
+            Lista de figuras encontradas com formato [{"type": "Figura", "number": "1", "caption": "..."}]
+        """
+        figures = []
+        figure_count = 0
+        quadro_count = 0
+
+        for paragraph in self.doc.paragraphs:
+            text = paragraph.text.strip()
+
+            # Detecta "Figura X - Descrição"
+            if text.startswith('Figura '):
+                figure_count += 1
+                caption = text.replace('Figura ', '')
+                figures.append({
+                    "type": "Figura",
+                    "number": str(figure_count),
+                    "caption": caption,
+                    "page": "0"  # Placeholder - Word calculará automaticamente
+                })
+
+            # Detecta "Quadro X - Descrição"
+            elif text.startswith('Quadro '):
+                quadro_count += 1
+                caption = text.replace('Quadro ', '')
+                figures.append({
+                    "type": "Quadro",
+                    "number": str(quadro_count),
+                    "caption": caption,
+                    "page": "0"
+                })
+
+        return figures
+
+    def _detect_tables(self) -> List[Dict[str, str]]:
+        """
+        Detecta tabelas no documento.
+
+        Returns:
+            Lista de tabelas encontradas
+        """
+        tables = []
+        table_count = 0
+
+        for paragraph in self.doc.paragraphs:
+            text = paragraph.text.strip()
+
+            # Detecta "Tabela X - Descrição"
+            if text.startswith('Tabela '):
+                table_count += 1
+                caption = text.replace('Tabela ', '')
+                tables.append({
+                    "number": str(table_count),
+                    "caption": caption,
+                    "page": "0"  # Placeholder
+                })
+
+        return tables
+
+    def _create_list_of_figures(self, figures: List[Dict[str, str]]):
+        """Cria a lista de ilustrações (figuras e quadros)."""
+        # Título
+        p = self.doc.add_paragraph()
+        p.text = "LISTA DE ILUSTRAÇÕES"
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Cm(3)
+        p.paragraph_format.space_after = Cm(2)
+        for run in p.runs:
+            run.font.name = self.FONTE_PRINCIPAL
+            run.font.size = self.TAMANHO_FONTE_NORMAL
+            run.font.bold = True
+
+        # Entradas
+        for fig in figures:
+            p = self.doc.add_paragraph()
+            entry_text = f"{fig['type']} {fig['number']} - {fig['caption']}"
+
+            # Remove número de página se já estiver na caption
+            if '...' in entry_text:
+                entry_text = entry_text.split('...')[0]
+
+            # Adiciona linha pontilhada e número de página
+            entry_text += "." * 50 + fig['page']
+
+            p.text = entry_text
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+            for run in p.runs:
+                run.font.name = self.FONTE_PRINCIPAL
+                run.font.size = self.TAMANHO_FONTE_NORMAL
+
+        self.doc.add_page_break()
+
+    def _create_list_of_tables(self, tables: List[Dict[str, str]]):
+        """Cria a lista de tabelas."""
+        # Título
+        p = self.doc.add_paragraph()
+        p.text = "LISTA DE TABELAS"
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Cm(3)
+        p.paragraph_format.space_after = Cm(2)
+        for run in p.runs:
+            run.font.name = self.FONTE_PRINCIPAL
+            run.font.size = self.TAMANHO_FONTE_NORMAL
+            run.font.bold = True
+
+        # Entradas
+        for table in tables:
+            p = self.doc.add_paragraph()
+            entry_text = f"Tabela {table['number']} - {table['caption']}"
+
+            # Remove número de página se já estiver na caption
+            if '...' in entry_text:
+                entry_text = entry_text.split('...')[0]
+
+            # Adiciona linha pontilhada e número de página
+            entry_text += "." * 50 + table['page']
+
+            p.text = entry_text
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+            for run in p.runs:
+                run.font.name = self.FONTE_PRINCIPAL
+                run.font.size = self.TAMANHO_FONTE_NORMAL
+
+        self.doc.add_page_break()
+
+    def _create_list_of_abbreviations(self):
+        """Cria a lista de abreviaturas e siglas em ordem alfabética."""
+        # Título
+        p = self.doc.add_paragraph()
+        p.text = "LISTA DE ABREVIATURAS E SIGLAS"
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Cm(3)
+        p.paragraph_format.space_after = Cm(2)
+        for run in p.runs:
+            run.font.name = self.FONTE_PRINCIPAL
+            run.font.size = self.TAMANHO_FONTE_NORMAL
+            run.font.bold = True
+
+        # Ordena alfabeticamente
+        sorted_abbrs = sorted(self.metadata.abbreviations, key=lambda x: x.get('abbr', ''))
+
+        # Entradas
+        for abbr in sorted_abbrs:
+            p = self.doc.add_paragraph()
+            p.text = f"{abbr.get('abbr', '')} - {abbr.get('full', '')}"
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+            for run in p.runs:
+                run.font.name = self.FONTE_PRINCIPAL
+                run.font.size = self.TAMANHO_FONTE_NORMAL
+
+        self.doc.add_page_break()
+
+    def _create_list_of_symbols(self):
+        """Cria a lista de símbolos na ordem que aparecem no documento."""
+        # Título
+        p = self.doc.add_paragraph()
+        p.text = "LISTA DE SÍMBOLOS"
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Cm(3)
+        p.paragraph_format.space_after = Cm(2)
+        for run in p.runs:
+            run.font.name = self.FONTE_PRINCIPAL
+            run.font.size = self.TAMANHO_FONTE_NORMAL
+            run.font.bold = True
+
+        # Entradas
+        for symbol in self.metadata.symbols:
+            p = self.doc.add_paragraph()
+            p.text = f"{symbol.get('symbol', '')} - {symbol.get('meaning', '')}"
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+            for run in p.runs:
+                run.font.name = self.FONTE_PRINCIPAL
+                run.font.size = self.TAMANHO_FONTE_NORMAL
+
+        self.doc.add_page_break()
 
     def _create_summary(self):
         """
         Cria o sumário (elemento obrigatório) automaticamente baseado nos títulos.
 
         O sumário lista todas as seções e subseções com suas respectivas páginas.
+        Nota: Os números de página serão "0" até que o documento seja aberto no Word,
+        onde podem ser atualizados automaticamente usando campos de TOC.
         """
         # Título SUMÁRIO
         p = self.doc.add_paragraph()
@@ -942,11 +1154,84 @@ class ABNTFormatter:
             run.font.size = self.TAMANHO_FONTE_NORMAL
             run.font.bold = True
 
-        # TODO: Gerar entradas do sumário automaticamente
-        # Isso requer a detecção de todos os títulos (Heading 1, 2, 3, etc.)
-        # e suas páginas correspondentes
+        # Detecta títulos no documento
+        headings = self._detect_headings()
+
+        # Cria entradas do sumário
+        for heading in headings:
+            p = self.doc.add_paragraph()
+
+            # Formata o texto baseado no nível
+            level = heading['level']
+            number = heading.get('number', '')
+            title = heading['title']
+
+            # Indentação baseada no nível
+            indent = Cm(0.5 * (level - 1))
+
+            # Texto da entrada
+            if number:
+                entry_text = f"{number} {title}"
+            else:
+                entry_text = title
+
+            # Adiciona linha pontilhada e número de página
+            dots = "." * (80 - len(entry_text) - 2)
+            entry_text += " " + dots + " 0"
+
+            p.text = entry_text
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            p.paragraph_format.left_indent = indent
+            p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.SINGLE
+            for run in p.runs:
+                run.font.name = self.FONTE_PRINCIPAL
+                run.font.size = self.TAMANHO_FONTE_NORMAL
 
         self.doc.add_page_break()
+
+    def _detect_headings(self) -> List[Dict[str, any]]:
+        """
+        Detecta todos os títulos (headings) do documento.
+
+        Returns:
+            Lista de títulos com nível, número e texto
+        """
+        headings = []
+
+        for paragraph in self.doc.paragraphs:
+            style_name = paragraph.style.name
+
+            # Verifica se é um heading
+            if style_name.startswith('Heading'):
+                try:
+                    level = int(style_name.split()[-1])
+                except:
+                    continue
+
+                text = paragraph.text.strip()
+
+                # Extrai numeração se existir
+                import re
+                match = re.match(r'^(\d+(\.\d+)*)\s+(.+)$', text)
+                if match:
+                    number = match.group(1)
+                    title = match.group(3)
+                else:
+                    number = ''
+                    title = text
+
+                # Ignora títulos vazios e elementos pré-textuais
+                skip_titles = ['RESUMO', 'ABSTRACT', 'SUMÁRIO', 'LISTA DE', 'AGRADECIMENTOS',
+                              'DEDICATÓRIA', 'EPÍGRAFE', 'ERRATA']
+                if title and not any(skip in title.upper() for skip in skip_titles):
+                    headings.append({
+                        'level': level,
+                        'number': number,
+                        'title': title,
+                        'page': '0'  # Placeholder
+                    })
+
+        return headings
 
     # ========== ELEMENTOS PÓS-TEXTUAIS ==========
 

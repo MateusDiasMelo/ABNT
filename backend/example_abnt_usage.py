@@ -108,6 +108,24 @@ def create_complete_academic_document():
             "Prof. Dr. José da Silva - UNIFESP",
             "Profa. Dra. Maria Santos - USP",
             "Prof. Dr. Pedro Oliveira - UNICAMP"
+        ],
+
+        # Listas opcionais
+        include_list_of_figures=True,  # Detecta automaticamente figuras e quadros
+        include_list_of_tables=True,   # Detecta automaticamente tabelas
+        include_list_of_abbreviations=True,
+        abbreviations=[
+            {"abbr": "ABNT", "full": "Associação Brasileira de Normas Técnicas"},
+            {"abbr": "ML", "full": "Machine Learning"},
+            {"abbr": "IA", "full": "Inteligência Artificial"},
+            {"abbr": "RNA", "full": "Rede Neural Artificial"},
+            {"abbr": "SVM", "full": "Support Vector Machine"}
+        ],
+        include_list_of_symbols=True,
+        symbols=[
+            {"symbol": "α", "meaning": "Nível de significância"},
+            {"symbol": "β", "meaning": "Coeficiente de regressão"},
+            {"symbol": "σ", "meaning": "Desvio padrão"}
         ]
     )
 
@@ -142,8 +160,39 @@ def create_complete_academic_document():
     doc.add_heading('Resultados', level=2)
     doc.add_paragraph(
         'Os experimentos realizados demonstraram que o algoritmo Random Forest obteve '
-        'o melhor desempenho, com acurácia de 87,3%. A Tabela 1 apresenta os resultados '
-        'completos de todos os algoritmos avaliados.'
+        'o melhor desempenho, com acurácia de 87,3%.'
+    )
+
+    # Adiciona uma figura de exemplo
+    doc.add_paragraph('Figura 1 - Comparação de performance dos algoritmos de ML')
+    doc.add_paragraph('[Gráfico comparativo seria inserido aqui]')
+
+    # Adiciona uma tabela de exemplo
+    doc.add_paragraph('Tabela 1 - Resultados de acurácia dos algoritmos')
+    table = doc.add_table(rows=6, cols=2)
+    table.style = 'Table Grid'
+
+    # Cabeçalho
+    table.rows[0].cells[0].text = 'Algoritmo'
+    table.rows[0].cells[1].text = 'Acurácia (%)'
+
+    # Dados
+    table.rows[1].cells[0].text = 'Random Forest'
+    table.rows[1].cells[1].text = '87.3'
+    table.rows[2].cells[0].text = 'SVM'
+    table.rows[2].cells[1].text = '85.1'
+    table.rows[3].cells[0].text = 'Redes Neurais'
+    table.rows[3].cells[1].text = '83.7'
+    table.rows[4].cells[0].text = 'k-NN'
+    table.rows[4].cells[1].text = '81.2'
+    table.rows[5].cells[0].text = 'Naive Bayes'
+    table.rows[5].cells[1].text = '79.8'
+
+    # Adiciona um quadro de exemplo
+    doc.add_paragraph()
+    doc.add_paragraph('Quadro 1 - Características dos algoritmos avaliados')
+    doc.add_paragraph(
+        'Este quadro apresenta as principais características de cada algoritmo utilizado na pesquisa.'
     )
 
     # Conclusão
@@ -205,6 +254,10 @@ def create_complete_academic_document():
     print(f"   ✓ Epígrafe")
     print(f"   ✓ Resumo (PT)")
     print(f"   ✓ Abstract (EN)")
+    print(f"   ✓ Lista de ilustrações (figuras e quadros)")
+    print(f"   ✓ Lista de tabelas")
+    print(f"   ✓ Lista de abreviaturas e siglas")
+    print(f"   ✓ Lista de símbolos")
     print(f"   ✓ Sumário")
 
     return formatted_doc
