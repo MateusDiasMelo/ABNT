@@ -95,7 +95,7 @@ const PaymentSection: React.FC<PaymentSectionProps> = ({
         <div className="qr-code-container">
           <h3>Escaneie o QR Code para pagar com PIX</h3>
           <img
-            src={`data:image/svg+xml;base64,${paymentData.qr_code_base64}`}
+            src={`data:image/png;base64,${paymentData.qr_code_base64}`}
             alt="QR Code PIX"
             style={{ maxWidth: '300px', margin: '1rem auto', display: 'block' }}
           />

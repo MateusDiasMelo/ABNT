@@ -22,6 +22,7 @@ python-dotenv==1.0.0
 # Payment
 mercadopago==2.2.1
 stripe==7.8.0
+qrcode[pil]==7.4.2
 
 # Utils
 pydantic==2.5.0
