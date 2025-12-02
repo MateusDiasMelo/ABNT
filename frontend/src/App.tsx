@@ -27,7 +27,7 @@ interface AppState {
   paymentData: PaymentResponse | null;
   loading: boolean;
   error: string | null;
-  paymentVerificationInterval: NodeJS.Timeout | null;
+  paymentVerificationInterval: number | null;
 }
 
 function App() {
