@@ -1,4 +1,6 @@
 @echo off
+setlocal enabledelayedexpansion
+
 REM ===== CONFIGURAÇÕES =====
 set FRONTEND_DIR=C:\Users\User\ABNT\frontend
 set SERVER_USER=root
@@ -11,15 +13,20 @@ echo   DEPLOY ABNTX - FRONTEND + BACKEND
 echo ============================================
 echo.
 
+pause
+
 REM ===== FRONTEND: BUILD =====
-echo [1/3] Indo para pasta do frontend: %FRONTEND_DIR%
-cd /d "%FRONTEND_DIR%" || (
-    echo ERRO: Nao consegui acessar %FRONTEND_DIR%
+echo [1/4] Indo para pasta do frontend: %FRONTEND_DIR%
+cd /d "%FRONTEND_DIR%"
+if errorlevel 1 (
+    echo ERRO: Não consegui acessar %FRONTEND_DIR%
     pause
     exit /b 1
 )
 
-echo [2/3] Instalando dependencias (npm install)...
+pause
+
+echo [2/4] Instalando dependencias (npm install)...
 npm install
 if errorlevel 1 (
     echo ERRO no npm install
@@ -27,13 +34,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [3/3] Gerando build (npm run build)...
+pause
+
+echo [3/4] Gerando build (npm run build)...
 npm run build
 if errorlevel 1 (
     echo ERRO no npm run build
     pause
     exit /b 1
 )
+
+pause
 
 if not exist "%FRONTEND_DIR%\dist" (
     echo ERRO: pasta dist nao encontrada apos o build.
@@ -42,26 +53,24 @@ if not exist "%FRONTEND_DIR%\dist" (
 )
 
 echo.
-echo ===== ENVIANDO BUILD PARA O SERVIDOR =====
-scp -P %SERVER_PORT% -r dist/* %SERVER_USER%@%SERVER_HOST%:%SERVER_FRONTEND_PATH%
-if errorlevel 1 (
-    echo ERRO ao enviar arquivos via scp.
-    pause
-    exit /b 1
-)
+echo ===== LIMPANDO FRONTEND ANTIGO NO SERVIDOR =====
+ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_HOST% "rm -rf %SERVER_FRONTEND_PATH%/*"
 
-echo.
+pause
+
+echo ===== ENVIANDO NOVO FRONTEND =====
+scp -P %SERVER_PORT% -r "%FRONTEND_DIR%\dist\*" %SERVER_USER%@%SERVER_HOST%:%SERVER_FRONTEND_PATH%
+
+pause
+
 echo ===== ATUALIZANDO BACKEND NO SERVIDOR =====
 ssh -p %SERVER_PORT% %SERVER_USER%@%SERVER_HOST% "/root/deploy_abntx.sh"
-if errorlevel 1 (
-    echo ERRO ao executar deploy_abntx.sh no servidor.
-    pause
-    exit /b 1
-)
 
-echo.
+pause
+
 echo ============================================
 echo   DEPLOY CONCLUIDO COM SUCESSO! 🎉
 echo   Site: https://abntx.com.br
 echo ============================================
+
 pause
