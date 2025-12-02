@@ -27,6 +27,7 @@ interface AppState {
   paymentData: PaymentResponse | null;
   loading: boolean;
   error: string | null;
+  paymentVerificationInterval: NodeJS.Timeout | null;
 }
 
 function App() {
@@ -37,7 +38,8 @@ function App() {
     processingData: null,
     paymentData: null,
     loading: false,
-    error: null
+    error: null,
+    paymentVerificationInterval: null
   });
 
   const handleFileSelect = async (file: File) => {
@@ -103,22 +105,72 @@ function App() {
     }
   };
 
+  const handleGenerateNewQRCode = async () => {
+    if (!state.documentData) return;
+
+    // Limpa o interval de verificação anterior se existir
+    if (state.paymentVerificationInterval) {
+      clearInterval(state.paymentVerificationInterval);
+    }
+
+    // Limpa o pagamento anterior
+    setState(prev => ({ ...prev, paymentData: null, loading: true, error: null, paymentVerificationInterval: null }));
+
+    // Cria um novo pagamento
+    try {
+      const paymentResult = await createPayment(
+        state.documentData.file_id,
+        'mercadopago'
+      );
+
+      if (paymentResult.success) {
+        setState(prev => ({
+          ...prev,
+          paymentData: paymentResult,
+          loading: false
+        }));
+
+        // Verifica pagamento periodicamente
+        startPaymentVerification(state.documentData.file_id, paymentResult.payment_id!, 'mercadopago');
+      } else {
+        throw new Error(paymentResult.error || 'Erro ao gerar novo QR Code');
+      }
+    } catch (error: any) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error.response?.data?.detail || error.message || 'Erro ao gerar novo QR Code'
+      }));
+    }
+  };
+
   const startPaymentVerification = (fileId: string, paymentId: string, gateway: 'mercadopago') => {
+    // Limpa o interval anterior se existir
+    if (state.paymentVerificationInterval) {
+      clearInterval(state.paymentVerificationInterval);
+    }
+
     const interval = setInterval(async () => {
       try {
         const result = await verifyPayment(fileId, paymentId, gateway);
 
         if (result.approved) {
           clearInterval(interval);
-          setState(prev => ({ ...prev, step: 4 }));
+          setState(prev => ({ ...prev, step: 4, paymentVerificationInterval: null }));
         }
       } catch (error) {
         console.error('Erro ao verificar pagamento:', error);
       }
     }, 3000); // Verifica a cada 3 segundos
 
+    // Armazena a referência do interval no estado
+    setState(prev => ({ ...prev, paymentVerificationInterval: interval }));
+
     // Para após 10 minutos
-    setTimeout(() => clearInterval(interval), 600000);
+    setTimeout(() => {
+      clearInterval(interval);
+      setState(prev => ({ ...prev, paymentVerificationInterval: null }));
+    }, 600000);
   };
 
   const handleDownload = () => {
@@ -128,6 +180,11 @@ function App() {
   };
 
   const handleReset = () => {
+    // Limpa o interval de verificação se existir
+    if (state.paymentVerificationInterval) {
+      clearInterval(state.paymentVerificationInterval);
+    }
+
     setState({
       step: 1,
       selectedFile: null,
@@ -135,7 +192,8 @@ function App() {
       processingData: null,
       paymentData: null,
       loading: false,
-      error: null
+      error: null,
+      paymentVerificationInterval: null
     });
   };
 
@@ -218,6 +276,7 @@ function App() {
               price={state.processingData.price}
               pages={state.processingData.formatted_pages}
               onPaymentInitiate={handlePaymentInitiate}
+              onGenerateNewQRCode={handleGenerateNewQRCode}
               paymentData={state.paymentData || undefined}
               loading={state.loading}
             />
