@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     MERCADOPAGO_ACCESS_TOKEN: str = ""
     MERCADOPAGO_PUBLIC_KEY: str = ""
     MERCADOPAGO_TEST_MODE: bool = True  # Set to False for production
+    PAYMENT_DEV_MODE: bool = True  # Simulates payments for development without real credentials
     STRIPE_SECRET_KEY: str = ""
     STRIPE_PUBLIC_KEY: str = ""
 

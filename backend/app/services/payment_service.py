@@ -34,18 +34,34 @@ class PaymentService:
         Returns:
             Dados do pagamento
         """
+        # Development mode: simulate PIX payment without real credentials
+        if self.settings.PAYMENT_DEV_MODE:
+            import uuid
+            import base64
+            from io import BytesIO
+
+            # Generate a fake QR code for development
+            fake_qr_data = f"00020126360014BR.GOV.BCB.PIX0114+55119999999990204000053039865802BR5925ABNT Formatador LTDA6009SAO PAULO62070503***6304{uuid.uuid4().hex[:4].upper()}"
+
+            # Create a simple fake QR code image (just a placeholder)
+            # In production, this would be a real QR code from MercadoPago
+            fake_qr_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+
+            return {
+                "success": True,
+                "payment_id": f"dev_{uuid.uuid4().hex}",
+                "status": "pending",
+                "qr_code": fake_qr_data,
+                "qr_code_base64": fake_qr_base64,
+                "ticket_url": None,
+            }
+
+        # Production mode: use real MercadoPago API
         if not self.settings.MERCADOPAGO_ACCESS_TOKEN:
             raise ValueError("Mercado Pago não configurado")
 
-        # Initialize SDK with test mode configuration
+        # Initialize SDK
         sdk = mercadopago.SDK(self.settings.MERCADOPAGO_ACCESS_TOKEN)
-
-        # Configure request options for test mode if enabled
-        request_options = mercadopago.config.RequestOptions()
-        if self.settings.MERCADOPAGO_TEST_MODE:
-            request_options.custom_headers = {
-                "x-test-scope": "sandbox"
-            }
 
         payment_data = {
             "transaction_amount": float(amount),
@@ -61,11 +77,7 @@ class PaymentService:
         }
 
         try:
-            # Create payment with request options
-            if self.settings.MERCADOPAGO_TEST_MODE:
-                payment_response = sdk.payment().create(payment_data, request_options)
-            else:
-                payment_response = sdk.payment().create(payment_data)
+            payment_response = sdk.payment().create(payment_data)
 
             # Check if the request was successful
             if payment_response.get("status") != 201:
@@ -156,6 +168,17 @@ class PaymentService:
         Returns:
             Status do pagamento
         """
+        # Development mode: auto-approve payments
+        if self.settings.PAYMENT_DEV_MODE:
+            if payment_id.startswith("dev_"):
+                return {
+                    "success": True,
+                    "status": "approved",
+                    "status_detail": "accredited",
+                    "approved": True,
+                }
+
+        # Production mode: check real payment status
         if not self.settings.MERCADOPAGO_ACCESS_TOKEN:
             raise ValueError("Mercado Pago não configurado")
 
