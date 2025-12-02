@@ -6,7 +6,7 @@ Endpoints para upload, processamento, pagamento e download.
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 import os
 import uuid
 from datetime import datetime, timedelta
@@ -15,6 +15,7 @@ import aiofiles
 from ..core.config import get_settings
 from ..services.document_processor import DocumentProcessor, DocumentAnalyzer
 from ..services.payment_service import PaymentService
+from ..services.abnt_formatter import DocumentMetadata
 
 router = APIRouter()
 settings = get_settings()
@@ -67,6 +68,45 @@ class PaymentVerificationRequest(BaseModel):
     file_id: str
     payment_id: str
     gateway: str
+
+
+class DocumentMetadataRequest(BaseModel):
+    """Metadados opcionais do documento para elementos pré-textuais ABNT."""
+    # Elementos obrigatórios
+    author: Optional[str] = None
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    institution: Optional[str] = None
+    department: Optional[str] = None
+    degree_type: Optional[str] = None
+    field_of_study: Optional[str] = None
+    city: Optional[str] = None
+    year: Optional[int] = None
+
+    # Orientação
+    advisor: Optional[str] = None
+    advisor_title: Optional[str] = "Prof. Dr."
+    co_advisor: Optional[str] = None
+    co_advisor_title: Optional[str] = "Prof. Dr."
+
+    # Elementos pré-textuais opcionais
+    dedication: Optional[str] = None
+    acknowledgments: Optional[str] = None
+    epigraph: Optional[str] = None
+    epigraph_author: Optional[str] = None
+    abstract_pt: Optional[str] = None
+    keywords_pt: Optional[List[str]] = None
+    abstract_en: Optional[str] = None
+    keywords_en: Optional[List[str]] = None
+
+    # Errata
+    errata_items: Optional[List[dict]] = None
+
+
+class ProcessingRequest(BaseModel):
+    """Requisição de processamento com metadados opcionais."""
+    include_pretextual: bool = False
+    metadata: Optional[DocumentMetadataRequest] = None
 
 
 @router.post("/upload", response_model=DocumentResponse)
@@ -163,12 +203,18 @@ async def upload_document(
 
 
 @router.post("/process/{file_id}", response_model=ProcessingResponse)
-async def process_document(file_id: str):
+async def process_document(
+    file_id: str,
+    processing_request: Optional[ProcessingRequest] = None
+):
     """
     Processa documento aplicando formatação ABNT.
 
     Args:
         file_id: ID do documento
+        processing_request: Configurações de processamento (opcional) incluindo:
+            - include_pretextual: Se True, adiciona elementos pré-textuais (capa, folha de rosto, etc.)
+            - metadata: Metadados do documento (autor, título, instituição, etc.)
 
     Returns:
         Informações do processamento
@@ -195,16 +241,36 @@ async def process_document(file_id: str):
             f"{file_id}_formatted.docx"
         )
 
+        # Prepara metadados se fornecidos
+        metadata = None
+        include_pretextual = False
+
+        if processing_request:
+            include_pretextual = processing_request.include_pretextual
+
+            if processing_request.metadata:
+                # Converte Pydantic model para DocumentMetadata
+                metadata_dict = processing_request.metadata.model_dump(exclude_none=True)
+                metadata = DocumentMetadata(**metadata_dict)
+
+        # Armazena configurações
+        doc_info["include_pretextual"] = include_pretextual
+        doc_info["metadata"] = processing_request.metadata.model_dump() if processing_request and processing_request.metadata else None
+
         # Processa documento
         if doc_info["original_extension"] == "docx":
             _, page_count = DocumentProcessor.process_docx(
                 doc_info["original_path"],
-                processed_path
+                processed_path,
+                metadata=metadata,
+                include_pretextual=include_pretextual
             )
         elif doc_info["original_extension"] == "pdf":
             _, page_count = DocumentProcessor.process_pdf(
                 doc_info["original_path"],
-                processed_path
+                processed_path,
+                metadata=metadata,
+                include_pretextual=include_pretextual
             )
         else:
             raise ValueError("Formato não suportado")

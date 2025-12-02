@@ -17,13 +17,20 @@ class DocumentProcessor:
     """Processador de documentos DOCX e PDF."""
 
     @staticmethod
-    def process_docx(input_path: str, output_path: str) -> Tuple[Document, int]:
+    def process_docx(
+        input_path: str,
+        output_path: str,
+        metadata: Optional['DocumentMetadata'] = None,
+        include_pretextual: bool = False
+    ) -> Tuple[Document, int]:
         """
         Processa um arquivo DOCX aplicando formatação ABNT.
 
         Args:
             input_path: Caminho do arquivo de entrada
             output_path: Caminho do arquivo de saída
+            metadata: Metadados do documento (opcional)
+            include_pretextual: Se True, adiciona elementos pré-textuais (opcional)
 
         Returns:
             Tupla com (documento formatado, número de páginas)
@@ -32,8 +39,8 @@ class DocumentProcessor:
         doc = Document(input_path)
 
         # Aplica formatação ABNT
-        formatter = ABNTFormatter(doc)
-        formatted_doc = formatter.format_document()
+        formatter = ABNTFormatter(doc, metadata=metadata)
+        formatted_doc = formatter.format_document(include_pretextual=include_pretextual)
 
         # Conta páginas
         page_count = formatter.count_pages()
@@ -44,13 +51,20 @@ class DocumentProcessor:
         return formatted_doc, page_count
 
     @staticmethod
-    def process_pdf(input_path: str, output_path: str) -> Tuple[Document, int]:
+    def process_pdf(
+        input_path: str,
+        output_path: str,
+        metadata: Optional['DocumentMetadata'] = None,
+        include_pretextual: bool = False
+    ) -> Tuple[Document, int]:
         """
         Processa um arquivo PDF convertendo para DOCX e aplicando formatação ABNT.
 
         Args:
             input_path: Caminho do arquivo PDF de entrada
             output_path: Caminho do arquivo DOCX de saída
+            metadata: Metadados do documento (opcional)
+            include_pretextual: Se True, adiciona elementos pré-textuais (opcional)
 
         Returns:
             Tupla com (documento formatado, número de páginas)
@@ -68,7 +82,10 @@ class DocumentProcessor:
 
             # Processa o DOCX temporário
             formatted_doc, page_count = DocumentProcessor.process_docx(
-                temp_docx_path, output_path
+                temp_docx_path,
+                output_path,
+                metadata=metadata,
+                include_pretextual=include_pretextual
             )
 
             return formatted_doc, page_count
