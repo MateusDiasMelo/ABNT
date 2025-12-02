@@ -16,10 +16,24 @@ from ..core.config import get_settings
 from ..services.document_processor import DocumentProcessor, DocumentAnalyzer
 from ..services.payment_service import PaymentService
 from ..services.abnt_formatter import DocumentMetadata
+from ..services.sheets_service import SheetsService
+import logging
 
 router = APIRouter()
 settings = get_settings()
 payment_service = PaymentService()
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Initialize SheetsService (with error handling for missing credentials)
+sheets_service = None
+try:
+    sheets_service = SheetsService()
+    logger.info("✅ Google Sheets integração inicializada com sucesso")
+except Exception as e:
+    logger.warning(f"⚠️ Google Sheets não configurado: {str(e)}")
+    logger.warning("⚠️ Continuando sem integração com Google Sheets")
 
 # Armazena informações de documentos em memória (em produção, usar DB)
 documents_store = {}
@@ -362,6 +376,25 @@ async def create_payment(payment_request: PaymentRequest):
             doc_info["payment_id"] = result.get("payment_id")
             doc_info["payment_gateway"] = payment_request.gateway
 
+            # Registra pagamento no Google Sheets
+            if sheets_service:
+                try:
+                    logger.info(f"📊 Registrando pagamento no Google Sheets: {result.get('payment_id')}")
+                    sheets_service.create_payment_record(
+                        file_id=payment_request.file_id,
+                        file_name=doc_info["original_filename"],
+                        page_count=doc_info["formatted_pages"],
+                        amount=doc_info["price"],
+                        payment_method=payment_request.gateway,
+                        payment_id=result.get("payment_id"),
+                        status=result.get("status", "pending"),
+                        payer_email=payment_request.payer_email
+                    )
+                    logger.info("✅ Pagamento registrado no Google Sheets com sucesso")
+                except Exception as e:
+                    logger.error(f"❌ Erro ao registrar pagamento no Google Sheets: {str(e)}")
+                    # Continua mesmo se falhar (não bloqueia o fluxo)
+
         return PaymentResponse(**result)
 
     except Exception as e:
@@ -386,6 +419,8 @@ async def verify_payment(verification: PaymentVerificationRequest):
     doc_info = documents_store[verification.file_id]
 
     try:
+        logger.info(f"🔍 Verificando pagamento: {verification.payment_id} via {verification.gateway}")
+
         if verification.gateway == "mercadopago":
             result = payment_service.verify_mercadopago_payment(verification.payment_id)
         elif verification.gateway == "stripe":
@@ -393,10 +428,28 @@ async def verify_payment(verification: PaymentVerificationRequest):
         else:
             raise HTTPException(status_code=400, detail="Gateway inválido")
 
+        logger.info(f"📥 Resultado da verificação: {result}")
+
         # Atualiza status se aprovado
         if result.get("approved"):
+            logger.info(f"✅ Pagamento aprovado! Atualizando status do documento {verification.file_id}")
             doc_info["payment_status"] = "approved"
             doc_info["payment_confirmed_at"] = datetime.utcnow()
+
+            # Atualiza status no Google Sheets
+            if sheets_service:
+                try:
+                    logger.info(f"📊 Atualizando status no Google Sheets: {verification.payment_id} -> approved")
+                    sheets_service.update_payment_status(
+                        payment_id=verification.payment_id,
+                        new_status="approved"
+                    )
+                    logger.info("✅ Status atualizado no Google Sheets com sucesso")
+                except Exception as e:
+                    logger.error(f"❌ Erro ao atualizar status no Google Sheets: {str(e)}")
+                    # Continua mesmo se falhar (não bloqueia o fluxo)
+        else:
+            logger.info(f"⏳ Pagamento ainda não aprovado. Status: {result.get('status')}")
 
         return result
 
@@ -415,14 +468,19 @@ async def download_document(file_id: str):
     Returns:
         Arquivo DOCX formatado
     """
+    logger.info(f"📥 Requisição de download recebida para: {file_id}")
+
     # Busca documento
     if file_id not in documents_store:
+        logger.error(f"❌ Documento não encontrado: {file_id}")
         raise HTTPException(status_code=404, detail="Documento não encontrado")
 
     doc_info = documents_store[file_id]
+    logger.info(f"📋 Status do pagamento: {doc_info.get('payment_status')}")
 
     # Verifica pagamento
     if doc_info["payment_status"] != "approved":
+        logger.warning(f"⛔ Download bloqueado - pagamento não aprovado: {file_id}")
         raise HTTPException(
             status_code=403,
             detail="Pagamento não confirmado. Complete o pagamento para fazer o download."
@@ -430,12 +488,15 @@ async def download_document(file_id: str):
 
     # Verifica se arquivo existe
     if not doc_info["processed_path"] or not os.path.exists(doc_info["processed_path"]):
+        logger.error(f"❌ Arquivo processado não encontrado: {doc_info.get('processed_path')}")
         raise HTTPException(status_code=404, detail="Arquivo processado não encontrado")
 
     # Atualiza contagem de downloads
     doc_info["downloaded"] = True
     doc_info["download_count"] = doc_info.get("download_count", 0) + 1
     doc_info["downloaded_at"] = datetime.utcnow()
+
+    logger.info(f"✅ Download autorizado: {doc_info['processed_path']}")
 
     # Retorna arquivo
     return FileResponse(
