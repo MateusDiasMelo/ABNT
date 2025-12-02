@@ -79,4 +79,7 @@ coverage/
 build/
 dist/
 
+# Example output files
+backend/exemplo_*.docx
+
 backend/google_credentials.json
