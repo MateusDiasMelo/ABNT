@@ -98,7 +98,7 @@ function App() {
       setState(prev => ({
         ...prev,
         loading: false,
-        error: error.response?.data?.detail || 'Erro ao criar pagamento'
+        error: error.response?.data?.detail || error.message || 'Erro ao criar pagamento'
       }));
     }
   };
