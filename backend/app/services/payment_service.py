@@ -168,9 +168,8 @@ class PaymentService:
         Returns:
             Status do pagamento
         """
-        # Development mode: auto-approve payments after a delay
+        # Development mode: auto-approve payments
         if self.settings.PAYMENT_DEV_MODE:
-            # In dev mode, simulate payment approval
             if payment_id.startswith("dev_"):
                 return {
                     "success": True,
@@ -180,15 +179,6 @@ class PaymentService:
                 }
 
         # Production mode: check real payment status
-        """
-        Verifica o status de um pagamento no Mercado Pago.
-
-        Args:
-            payment_id: ID do pagamento
-
-        Returns:
-            Status do pagamento
-        """
         if not self.settings.MERCADOPAGO_ACCESS_TOKEN:
             raise ValueError("Mercado Pago não configurado")
 
