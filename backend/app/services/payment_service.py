@@ -38,62 +38,69 @@ class PaymentService:
         Returns:
             Dados do pagamento
         """
-        # Check if MercadoPago credentials are configured
-        # Priority: Use real MercadoPago API if credentials are available
-        logger.info(f"🔍 Verificando credenciais do Mercado Pago...")
-        logger.info(f"   MERCADOPAGO_ACCESS_TOKEN configurado: {bool(self.settings.MERCADOPAGO_ACCESS_TOKEN)}")
-        logger.info(f"   PAYMENT_DEV_MODE: {self.settings.PAYMENT_DEV_MODE}")
+        # IMPORTANTE: Sistema sempre usa API REAL do Mercado Pago
+        # Nunca gera QR Code genérico/falso
+        logger.info("=" * 60)
+        logger.info("🔍 VERIFICAÇÃO DE CREDENCIAIS DO MERCADO PAGO")
+        logger.info("=" * 60)
 
-        if not self.settings.MERCADOPAGO_ACCESS_TOKEN or self.settings.MERCADOPAGO_ACCESS_TOKEN == "":
-            logger.warning("⚠️  Credenciais do Mercado Pago NÃO configuradas")
-            # Fallback to development mode only if no credentials are configured
-            if self.settings.PAYMENT_DEV_MODE:
-                logger.warning("⚠️  MODO DE DESENVOLVIMENTO - Gerando QR Code FALSO")
-                logger.warning("   Este QR Code NÃO processa pagamentos reais!")
+        # Verifica se credenciais estão configuradas
+        has_token = bool(self.settings.MERCADOPAGO_ACCESS_TOKEN and
+                        self.settings.MERCADOPAGO_ACCESS_TOKEN != "" and
+                        not self.settings.MERCADOPAGO_ACCESS_TOKEN.startswith("APP_USR-your-"))
 
-                import uuid
-                import base64
-                import qrcode
-                import io
+        logger.info(f"📋 MERCADOPAGO_ACCESS_TOKEN configurado: {has_token}")
 
-                # Generate a fake PIX code for development
-                fake_qr_data = f"00020126360014BR.GOV.BCB.PIX0114+55119999999990204000053039865802BR5925ABNT Formatador LTDA6009SAO PAULO62070503***6304{uuid.uuid4().hex[:4].upper()}"
+        if has_token and self.settings.MERCADOPAGO_ACCESS_TOKEN:
+            logger.info(f"📋 Token (primeiros 30 chars): {self.settings.MERCADOPAGO_ACCESS_TOKEN[:30]}...")
 
-                # Create a real QR code that can be scanned
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=qrcode.constants.ERROR_CORRECT_L,
-                    box_size=10,
-                    border=4,
-                )
-                qr.add_data(fake_qr_data)
-                qr.make(fit=True)
+        logger.info("=" * 60)
 
-                # Generate QR code image
-                img = qr.make_image(fill_color="black", back_color="white")
+        # CREDENCIAIS NÃO CONFIGURADAS - RETORNA ERRO CLARO
+        if not has_token:
+            error_msg = """
+╔════════════════════════════════════════════════════════════╗
+║  ❌ ERRO: CREDENCIAIS DO MERCADO PAGO NÃO CONFIGURADAS    ║
+╚════════════════════════════════════════════════════════════╝
 
-                # Convert to base64
-                buffer = io.BytesIO()
-                img.save(buffer, format='PNG')
-                buffer.seek(0)
-                fake_qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+MOTIVO: O servidor NÃO tem credenciais válidas do Mercado Pago.
 
-                return {
-                    "success": True,
-                    "payment_id": f"dev_{uuid.uuid4().hex}",
-                    "status": "pending",
-                    "qr_code": fake_qr_data,
-                    "qr_code_base64": fake_qr_base64,
-                    "ticket_url": None,
-                }
-            else:
-                raise ValueError("Mercado Pago não configurado e modo de desenvolvimento desabilitado")
+ONDE CONFIGURAR:
+  Arquivo: /caminho/para/backend/.env
+
+  Adicione estas linhas:
+  MERCADOPAGO_ACCESS_TOKEN=APP_USR-seu-token-real-aqui
+  MERCADOPAGO_PUBLIC_KEY=APP_USR-sua-chave-real-aqui
+  PAYMENT_DEV_MODE=False
+
+COMO OBTER CREDENCIAIS:
+  1. Acesse: https://www.mercadopago.com.br/developers/panel/app
+  2. Selecione ou crie uma aplicação
+  3. Copie "Access Token" e "Public Key"
+  4. Cole no arquivo .env
+  5. Reinicie o servidor
+
+IMPORTANTE:
+  - Este sistema NUNCA gera QR Code genérico
+  - Sempre usa API real do Mercado Pago
+  - Sem credenciais = sem pagamentos
+            """
+            logger.error(error_msg)
+
+            return {
+                "success": False,
+                "status": "error",
+                "error": "Credenciais do Mercado Pago não configuradas no servidor. Contate o administrador do sistema."
+            }
 
         # Use real MercadoPago API
-        # This is now the primary path when credentials are configured
-        logger.info("✅ Usando API REAL do Mercado Pago")
-        logger.info(f"   Valor: R$ {amount}")
-        logger.info(f"   Descrição: {description}")
+        logger.info("=" * 60)
+        logger.info("✅ USANDO API REAL DO MERCADO PAGO")
+        logger.info("=" * 60)
+        logger.info(f"💰 Valor: R$ {amount}")
+        logger.info(f"📝 Descrição: {description}")
+        logger.info(f"🆔 File ID: {file_id}")
+        logger.info("=" * 60)
 
         # Initialize SDK
         sdk = mercadopago.SDK(self.settings.MERCADOPAGO_ACCESS_TOKEN)
@@ -117,11 +124,23 @@ class PaymentService:
             logger.info("🌐 Chamando API do Mercado Pago...")
             payment_response = sdk.payment().create(payment_data)
 
-            logger.info(f"📥 Resposta da API - Status HTTP: {payment_response.get('status')}")
+            logger.info("=" * 60)
+            logger.info("📥 RESPOSTA DA API DO MERCADO PAGO")
+            logger.info("=" * 60)
+            logger.info(f"📊 Status HTTP: {payment_response.get('status')}")
 
             # Check if the request was successful (HTTP 201)
             if payment_response.get("status") != 201:
                 error_message = payment_response.get("response", {}).get("message", "Erro desconhecido do Mercado Pago")
+                error_details = payment_response.get("response", {})
+
+                logger.error("=" * 60)
+                logger.error("❌ ERRO NA API DO MERCADO PAGO")
+                logger.error("=" * 60)
+                logger.error(f"Mensagem: {error_message}")
+                logger.error(f"Detalhes: {error_details}")
+                logger.error("=" * 60)
+
                 return {
                     "success": False,
                     "status": "error",
@@ -133,23 +152,36 @@ class PaymentService:
             # Ensure status is always a string
             payment_status = str(payment.get("status", "pending"))
 
-            # Log payment details
-            logger.info(f"✅ Pagamento criado com sucesso!")
-            logger.info(f"   Payment ID: {payment.get('id')}")
-            logger.info(f"   Status: {payment_status}")
-
             # Extract QR Code data from response
             qr_code = payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code")
             qr_code_base64 = payment.get("point_of_interaction", {}).get("transaction_data", {}).get("qr_code_base64")
 
-            logger.info(f"   QR Code (string): {'Presente' if qr_code else 'AUSENTE'}")
-            logger.info(f"   QR Code Base64: {'Presente' if qr_code_base64 else 'AUSENTE'}")
+            logger.info(f"✅ Payment ID: {payment.get('id')}")
+            logger.info(f"✅ Status: {payment_status}")
+            logger.info("=" * 60)
+            logger.info("🔍 ANÁLISE DO QR CODE RETORNADO")
+            logger.info("=" * 60)
+            logger.info(f"📱 QR Code (string PIX): {'✅ PRESENTE' if qr_code else '❌ AUSENTE'}")
+            logger.info(f"🖼️  QR Code Base64 (imagem): {'✅ PRESENTE' if qr_code_base64 else '❌ AUSENTE'}")
 
             if qr_code_base64:
-                logger.info(f"   QR Code Base64 length: {len(qr_code_base64)}")
+                logger.info(f"📏 Tamanho do Base64: {len(qr_code_base64)} caracteres")
+                logger.info("✅ QR Code válido retornado pela API do Mercado Pago")
             else:
-                logger.warning("⚠️  QR Code Base64 NÃO retornado pela API do Mercado Pago!")
-                logger.warning(f"   Resposta completa: {payment.get('point_of_interaction', {})}")
+                logger.error("=" * 60)
+                logger.error("❌ ERRO CRÍTICO: QR CODE NÃO RETORNADO")
+                logger.error("=" * 60)
+                logger.error("A API do Mercado Pago NÃO retornou o QR Code!")
+                logger.error(f"Resposta point_of_interaction: {payment.get('point_of_interaction', {})}")
+                logger.error("=" * 60)
+                logger.error("POSSÍVEIS CAUSAS:")
+                logger.error("1. Credenciais inválidas ou expiradas")
+                logger.error("2. Conta do Mercado Pago sem permissão para PIX")
+                logger.error("3. API do Mercado Pago mudou o formato da resposta")
+                logger.error("4. Modo de teste requer configuração adicional")
+                logger.error("=" * 60)
+
+            logger.info("=" * 60)
 
             # qr_code_base64: Base64-encoded PNG image of QR Code (ready to display)
             # qr_code: Raw PIX payment code string (for copy-paste)
@@ -163,11 +195,20 @@ class PaymentService:
                 "ticket_url": payment.get("transaction_details", {}).get("external_resource_url"),
             }
         except Exception as e:
-            logger.error(f"❌ Erro ao criar pagamento: {str(e)}")
+            logger.error("=" * 60)
+            logger.error("❌ EXCEÇÃO AO CRIAR PAGAMENTO")
+            logger.error("=" * 60)
+            logger.error(f"Tipo: {type(e).__name__}")
+            logger.error(f"Mensagem: {str(e)}")
+            logger.error("=" * 60)
+
+            import traceback
+            logger.error(traceback.format_exc())
+
             return {
                 "success": False,
                 "status": "error",
-                "error": str(e)
+                "error": f"Erro ao criar pagamento: {str(e)}"
             }
 
     def create_stripe_payment_intent(
