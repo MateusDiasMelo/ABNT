@@ -38,7 +38,6 @@ export interface PaymentResponse {
   qr_code?: string;
   qr_code_base64?: string;
   ticket_url?: string;
-  client_secret?: string;
   error?: string;
 }
 
@@ -82,7 +81,7 @@ export const processDocument = async (fileId: string): Promise<ProcessingRespons
  */
 export const createPayment = async (
   fileId: string,
-  gateway: 'mercadopago' | 'stripe',
+  gateway: 'mercadopago',
   payerEmail?: string
 ): Promise<PaymentResponse> => {
   const response = await api.post<PaymentResponse>('/payment/create', {
@@ -100,7 +99,7 @@ export const createPayment = async (
 export const verifyPayment = async (
   fileId: string,
   paymentId: string,
-  gateway: 'mercadopago' | 'stripe'
+  gateway: 'mercadopago'
 ): Promise<any> => {
   const response = await api.post('/payment/verify', {
     file_id: fileId,
