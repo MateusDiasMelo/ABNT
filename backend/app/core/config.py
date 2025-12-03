@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     DEFAULT_FONT_SIZE: int = 12
     DEFAULT_LINE_SPACING: float = 1.5
 
+    # Email Settings
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = ""
+    SMTP_FROM_NAME: str = "ABNT Formatador"
+    SMTP_USE_TLS: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = True

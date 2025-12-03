@@ -17,6 +17,7 @@ from ..services.document_processor import DocumentProcessor, DocumentAnalyzer
 from ..services.payment_service import PaymentService
 from ..services.abnt_formatter import DocumentMetadata
 from ..services.sheets_service import SheetsService
+from ..services.email_service import EmailService
 import logging
 
 router = APIRouter()
@@ -34,6 +35,19 @@ try:
 except Exception as e:
     logger.warning(f"⚠️ Google Sheets não configurado: {str(e)}")
     logger.warning("⚠️ Continuando sem integração com Google Sheets")
+
+# Initialize EmailService (with error handling for missing credentials)
+email_service = None
+try:
+    email_service = EmailService()
+    if email_service.is_configured():
+        logger.info("✅ Email service inicializado com sucesso")
+    else:
+        logger.warning("⚠️ Email service não configurado (variáveis SMTP não definidas)")
+        logger.warning("⚠️ Emails não serão enviados automaticamente")
+except Exception as e:
+    logger.warning(f"⚠️ Email service não configurado: {str(e)}")
+    logger.warning("⚠️ Continuando sem envio automático de emails")
 
 # Armazena informações de documentos em memória (em produção, usar DB)
 documents_store = {}
@@ -375,6 +389,8 @@ async def create_payment(payment_request: PaymentRequest):
         if result.get("success"):
             doc_info["payment_id"] = result.get("payment_id")
             doc_info["payment_gateway"] = payment_request.gateway
+            doc_info["payer_email"] = payment_request.payer_email
+            doc_info["payment_amount"] = doc_info["price"]
 
             # Registra pagamento no Google Sheets
             if sheets_service:
@@ -448,6 +464,34 @@ async def verify_payment(verification: PaymentVerificationRequest):
                 except Exception as e:
                     logger.error(f"❌ Erro ao atualizar status no Google Sheets: {str(e)}")
                     # Continua mesmo se falhar (não bloqueia o fluxo)
+
+            # Envia email se configurado e email foi fornecido
+            payer_email = doc_info.get("payer_email")
+            if email_service and payer_email:
+                try:
+                    logger.info(f"📧 Enviando documento por email para {payer_email}")
+                    processed_path = doc_info.get("processed_path")
+                    if processed_path and os.path.exists(processed_path):
+                        payment_amount = doc_info.get("payment_amount", 0.0)
+                        email_sent = email_service.send_document_email(
+                            to_email=payer_email,
+                            document_path=processed_path,
+                            file_id=verification.file_id,
+                            payment_amount=payment_amount
+                        )
+                        if email_sent:
+                            logger.info(f"✅ Email enviado com sucesso para {payer_email}")
+                            doc_info["email_sent"] = True
+                            doc_info["email_sent_at"] = datetime.utcnow()
+                        else:
+                            logger.error(f"❌ Falha ao enviar email para {payer_email}")
+                    else:
+                        logger.error(f"❌ Arquivo processado não encontrado: {processed_path}")
+                except Exception as e:
+                    logger.error(f"❌ Erro ao enviar email: {str(e)}")
+                    # Continua mesmo se falhar (não bloqueia o fluxo)
+            elif payer_email and not email_service:
+                logger.warning("⚠️ Email service não disponível. Email não será enviado.")
         else:
             logger.info(f"⏳ Pagamento ainda não aprovado. Status: {result.get('status')}")
 
