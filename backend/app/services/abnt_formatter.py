@@ -230,6 +230,11 @@ class ABNTFormatter:
             if not paragraph.text.strip():
                 continue
 
+            # Verifica se o parágrafo tem estilo definido
+            if not paragraph.style or not hasattr(paragraph.style, 'name'):
+                paragraph.style = 'Normal'
+                continue
+
             # Aplica formatação se não for título
             if not paragraph.style.name.startswith('Heading'):
                 paragraph.style = 'Normal'
@@ -266,6 +271,10 @@ class ABNTFormatter:
         section_counters = [0, 0, 0, 0, 0]  # Contadores para até 5 níveis
 
         for paragraph in self.doc.paragraphs:
+            # Verifica se o parágrafo tem estilo definido
+            if not paragraph.style or not hasattr(paragraph.style, 'name'):
+                continue
+
             if paragraph.style.name.startswith('Heading'):
                 level = int(paragraph.style.name.split()[-1]) - 1
 
@@ -317,7 +326,8 @@ class ABNTFormatter:
                 continue
 
             if in_references:
-                if paragraph.style.name.startswith('Heading'):
+                # Verifica se é uma nova seção (heading)
+                if paragraph.style and hasattr(paragraph.style, 'name') and paragraph.style.name.startswith('Heading'):
                     break  # Nova seção começou
 
                 if paragraph.text.strip():
@@ -1199,6 +1209,10 @@ class ABNTFormatter:
         headings = []
 
         for paragraph in self.doc.paragraphs:
+            # Verifica se o parágrafo tem estilo definido
+            if not paragraph.style or not hasattr(paragraph.style, 'name'):
+                continue
+
             style_name = paragraph.style.name
 
             # Verifica se é um heading
@@ -1266,7 +1280,7 @@ class ABNTFormatter:
             # Processa itens do glossário
             if in_glossary:
                 # Verifica se é uma nova seção
-                if paragraph.style.name.startswith('Heading'):
+                if paragraph.style and hasattr(paragraph.style, 'name') and paragraph.style.name.startswith('Heading'):
                     break
 
                 # Formata entrada do glossário
@@ -1341,7 +1355,7 @@ class ABNTFormatter:
 
             # Formata itens do índice
             if in_index:
-                if paragraph.style.name.startswith('Heading'):
+                if paragraph.style and hasattr(paragraph.style, 'name') and paragraph.style.name.startswith('Heading'):
                     break
 
                 if paragraph.text.strip():
