@@ -9,7 +9,9 @@ Aplicativo web para formatação automática de trabalhos acadêmicos seguindo a
 - ✅ Formatação de referências NBR 6023
 - ✅ Contagem automática de páginas
 - ✅ Sistema de cobrança (R$ 0,80/página)
-- ✅ Integração com gateway de pagamento
+- ✅ Integração com gateway de pagamento (PIX)
+- ✅ QR Code PIX com código para copiar e colar
+- ✅ Envio automático por email após pagamento
 - ✅ Download do arquivo formatado
 
 ## 📋 Requisitos
@@ -116,6 +118,28 @@ MERCADOPAGO_PUBLIC_KEY=sua-chave-publica
 STRIPE_SECRET_KEY=sua-chave-secreta
 STRIPE_PUBLIC_KEY=sua-chave-publica
 ```
+
+## 📧 Configuração de Email (Opcional)
+
+O aplicativo pode enviar automaticamente o documento formatado por email após a confirmação do pagamento.
+
+Para habilitar o envio de emails, edite `backend/.env`:
+
+```env
+# Email Settings (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=seu-email@gmail.com
+SMTP_PASSWORD=sua-senha-de-app
+SMTP_FROM_EMAIL=noreply@abntformatador.com
+SMTP_FROM_NAME=ABNT Formatador
+SMTP_USE_TLS=True
+```
+
+**Nota para Gmail:**
+- Use uma "Senha de App" em vez da senha da conta
+- Gere em: https://myaccount.google.com/apppasswords
+- Ative a verificação em duas etapas primeiro
 
 ## 📐 Regras ABNT Implementadas
 
