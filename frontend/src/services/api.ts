@@ -71,10 +71,19 @@ export const uploadDocument = async (file: File): Promise<DocumentResponse> => {
 /**
  * Processa documento
  */
-export const processDocument = async (fileId: string): Promise<ProcessingResponse> => {
-  const response = await api.post<ProcessingResponse>(`/process/${fileId}`);
+export const processDocument = async (
+  fileId: string,
+  includePretextual: boolean = false,
+  metadata: any = null
+): Promise<ProcessingResponse> => {
+  const response = await api.post<ProcessingResponse>(`/process/${fileId}`, {
+    include_pretextual: includePretextual,
+    metadata: metadata,
+  });
+
   return response.data;
 };
+
 
 /**
  * Cria pagamento
