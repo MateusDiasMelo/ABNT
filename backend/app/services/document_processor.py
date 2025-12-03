@@ -69,6 +69,9 @@ class DocumentProcessor:
         Returns:
             Tupla com (documento formatado, número de páginas)
         """
+        # Obtém número de páginas do PDF original antes da conversão
+        original_pdf_pages = DocumentProcessor.get_pdf_page_count(input_path)
+
         # Cria arquivo temporário para conversão
         temp_docx = tempfile.NamedTemporaryFile(suffix='.docx', delete=False)
         temp_docx_path = temp_docx.name
@@ -81,12 +84,18 @@ class DocumentProcessor:
             cv.close()
 
             # Processa o DOCX temporário
-            formatted_doc, page_count = DocumentProcessor.process_docx(
+            formatted_doc, estimated_pages = DocumentProcessor.process_docx(
                 temp_docx_path,
                 output_path,
                 metadata=metadata,
                 include_pretextual=include_pretextual
             )
+
+            # Usa a contagem original do PDF como referência
+            # A formatação ABNT pode aumentar ligeiramente o número de páginas
+            # devido ao espaçamento 1.5, então usamos um fator de ~1.2
+            # Mas se a estimativa for muito baixa, usa a contagem original como mínimo
+            page_count = max(estimated_pages, int(original_pdf_pages * 0.95))
 
             return formatted_doc, page_count
 
