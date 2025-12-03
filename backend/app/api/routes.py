@@ -163,9 +163,30 @@ async def upload_document(
     Returns:
         Informações do documento
     """
+    # Valida se o arquivo foi enviado
+    if not file:
+        raise HTTPException(
+            status_code=400,
+            detail="Nenhum arquivo foi enviado"
+        )
+
+    # Valida se o nome do arquivo existe
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Nome do arquivo não foi fornecido"
+        )
+
+    # Valida se o arquivo tem extensão
+    if '.' not in file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="Arquivo deve ter uma extensão (ex: .docx ou .pdf)"
+        )
+
     # Valida extensão
     file_extension = file.filename.split('.')[-1].lower()
-    if file_extension not in settings.allowed_extensions_list:
+    if not file_extension or file_extension not in settings.allowed_extensions_list:
         raise HTTPException(
             status_code=400,
             detail=f"Formato não suportado. Use: {', '.join(settings.allowed_extensions_list)}"
@@ -237,6 +258,7 @@ async def upload_document(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"❌ Erro ao processar upload: {type(e).__name__}: {str(e)}", exc_info=True)
         if os.path.exists(original_path):
             os.unlink(original_path)
         raise HTTPException(status_code=500, detail=f"Erro ao processar upload: {str(e)}")
@@ -280,6 +302,10 @@ async def process_document(
             settings.PROCESSED_DIR,
             f"{file_id}_formatted.docx"
         )
+
+        # Verifica se o arquivo original ainda existe
+        if not os.path.exists(doc_info["original_path"]):
+            raise FileNotFoundError(f"Arquivo original não encontrado: {doc_info['original_path']}")
 
         # Prepara metadados se fornecidos
         metadata = None
@@ -337,6 +363,7 @@ async def process_document(
     except Exception as e:
         doc_info["status"] = "error"
         doc_info["error_message"] = str(e)
+        logger.error(f"❌ Erro ao processar documento {file_id}: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erro ao processar documento: {str(e)}")
 
 
