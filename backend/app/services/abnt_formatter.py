@@ -381,15 +381,57 @@ class ABNTFormatter:
 
     def count_pages(self) -> int:
         """
-        Estima o número de páginas do documento.
+        Estima o número de páginas do documento de forma mais precisa.
 
         Returns:
             Número estimado de páginas
         """
-        # Estimativa baseada em caracteres por página A4
-        # Aproximadamente 1800 caracteres por página com formatação ABNT
-        total_chars = sum(len(p.text) for p in self.doc.paragraphs)
-        estimated_pages = max(1, round(total_chars / 1800))
+        # Conta quebras de página explícitas
+        page_breaks = 0
+        for paragraph in self.doc.paragraphs:
+            # Verifica se há quebra de página no parágrafo
+            if paragraph._element.xpath('.//w:br[@w:type="page"]'):
+                page_breaks += 1
+
+        # Se houver quebras de página explícitas, use essa contagem
+        if page_breaks > 0:
+            estimated_pages = page_breaks + 1
+        else:
+            # Estimativa melhorada baseada em linhas e espaçamento ABNT
+            # Página A4 com margens ABNT: ~25.5cm de altura útil
+            # Com espaçamento 1.5 e fonte 12pt: ~27 linhas por página
+            # Com espaçamento simples: ~40 linhas por página
+
+            total_lines = 0
+            for paragraph in self.doc.paragraphs:
+                if not paragraph.text.strip():
+                    total_lines += 1  # Linha vazia
+                    continue
+
+                # Estima linhas por parágrafo baseado no comprimento do texto
+                # ~85 caracteres por linha (considerando margens ABNT)
+                chars_per_line = 85
+                paragraph_lines = max(1, len(paragraph.text) // chars_per_line + (1 if len(paragraph.text) % chars_per_line > 0 else 0))
+
+                # Verifica se o parágrafo usa espaçamento simples ou 1.5
+                is_quote_or_reference = False
+                if paragraph.style and hasattr(paragraph.style, 'name'):
+                    style_name = paragraph.style.name
+                    if style_name in ['Quote', 'Caption'] or 'Reference' in style_name:
+                        is_quote_or_reference = True
+
+                # Adiciona espaço extra entre parágrafos (espaçamento 1.5 vs simples)
+                if is_quote_or_reference:
+                    total_lines += paragraph_lines  # Espaçamento simples
+                else:
+                    total_lines += paragraph_lines * 1.5  # Espaçamento 1.5
+
+            # Adiciona linhas para tabelas (estimativa: 5 linhas por tabela)
+            total_lines += len(self.doc.tables) * 5
+
+            # Calcula páginas baseado em ~27 linhas efetivas por página (com espaçamento 1.5)
+            lines_per_page = 27
+            estimated_pages = max(1, round(total_lines / lines_per_page))
 
         self.page_count = estimated_pages
         return estimated_pages
